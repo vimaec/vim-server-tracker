@@ -1,0 +1,1574 @@
+/* ============================================================================================
+   VIM Flex DS — the ground-up, atomic design system for appVimCef workflows.
+
+   Served from disk as  vimflex://shell/ds.css  and linked (one line) by any workflow that opts into
+   the new system. It carries the VIM Flex "V2" styling ESSENCE — flat fills, 1px hairlines, the
+   Retina (titles/headings) + Roboto (body/buttons/numbers) type split, and the semantic colour
+   tokens — as CSS custom properties and
+   flat `.ds-*` component classes. The behaviour + composition live in the TS factory components under
+   vimflex://shell/components/ds/ (createButton, createChip, …). Styling here, logic there.
+
+   THE RULE (the ImGui-faithful envelope, ported from the V2 handoff):
+     Buttons carry a 3px corner radius, content cards 4px, and modals 8px (the `--ds-radius-*`
+     tokens); every other surface stays square. NO box-shadow · NO gradient · NO transition/animation (the one motion is ds-task's busy sweep).
+   Hierarchy comes from flat fills, 1px hairlines, weight, and colour — so the CEF workflows read as
+   the same product as the flat ImGui desktop app. The only other round primitive is the status dot
+   (`.ds-dot`). A layer separated by a shadow is wrong here; use `1px solid var(--hairline)`.
+
+   THEME: dark-first. Everything is carried by the tokens — set `data-theme="light"` on any ancestor
+   (or <html>) and every `--stage-*`/`--text-*`/`--hairline*`/semantic/accent var re-resolves to its
+   light twin. Components need zero per-component changes, which is exactly why you must never bypass
+   the semantic names (no hard hex in a component).
+   ============================================================================================ */
+
+/* ---- Fonts (served from vimflex://shell/fonts/) ------------------------------------------------ */
+/* Retina — titles + headings (--font-display); the three shipped weights (Book 400 / Medium 500 / Bold 700). */
+@font-face { font-family:'Retina'; font-style:normal; font-weight:400; font-display:swap;
+  src:url(fonts/Retina-Book.woff2) format('woff2'), url(fonts/Retina-Book.woff) format('woff'); }
+@font-face { font-family:'Retina'; font-style:normal; font-weight:500; font-display:swap;
+  src:url(fonts/Retina-Medium.woff2) format('woff2'), url(fonts/Retina-Medium.woff) format('woff'); }
+@font-face { font-family:'Retina'; font-style:normal; font-weight:700; font-display:swap;
+  src:url(fonts/Retina-Bold.woff2) format('woff2'), url(fonts/Retina-Bold.woff) format('woff'); }
+/* Roboto — general body + button text (--font-body) and data/values (--font-mono, with tabular-nums). */
+@font-face { font-family:'Roboto'; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url(fonts/Roboto-VariableFont_wdth_wght.ttf) format('truetype'); }
+@font-face { font-family:'Roboto'; font-style:italic; font-weight:100 900; font-display:swap;
+  src:url(fonts/Roboto-Italic-VariableFont_wdth_wght.ttf) format('truetype'); }
+/* FluentUI System Icons (MIT, fonts/FluentSystemIcons-LICENSE.txt) — icon glyphs (--font-icon /
+   --font-icon-filled). The two styles reuse the same code points, so the family picks the style. */
+@font-face { font-family:'FluentSystemIcons-Regular'; font-style:normal; font-weight:400; font-display:block;
+  src:url(fonts/FluentSystemIcons-Regular.woff2) format('woff2'); }
+@font-face { font-family:'FluentSystemIcons-Filled'; font-style:normal; font-weight:400; font-display:block;
+  src:url(fonts/FluentSystemIcons-Filled.woff2) format('woff2'); }
+
+/* ============================================================================================
+   TOKENS — dark (default). Colour names are verbatim from the V2 handoff (the design authority).
+   Sizing/spacing tokens are DS-specific and `--ds-`-prefixed to follow the "prefix your own" rule.
+   ============================================================================================ */
+:root {
+  /* Surfaces (dark chrome): 950 = page … 700 = cards, 600/500 = raised/hairline steps. */
+  --stage-950:#06090F; --stage-900:#0B121C; --stage-800:#131C2A; --stage-700:#1C2738;
+  --stage-600:#2A3548; --stage-500:#3F4B61;
+  /* Hairlines — the ONLY separators (no shadow). */
+  --hairline:#2A3548; --hairline-soft:#3F4B61;
+  /* Scrim — the modal backdrop dim (menus/pickers dismiss without dimming). Same in both themes. */
+  --scrim-heavy:rgba(0,0,0,0.45);
+  /* Accent — cyan = selected / primary / link. */
+  --vim-cyan:#3DB8F5; --vim-cyan-700:#2A91C8; --vim-cyan-300:#7CCEF8; --vim-cyan-tint:rgba(61,184,245,0.14); --vim-cyan-tint-pct:14%;
+  /* Text ramp — 100 brightest … 500 faint. */
+  --text-100:#F4F7FB; --text-200:#D6DCE6; --text-300:#9AA4B5; --text-400:#6A7689; --text-500:#485468;
+  /* Light data surfaces (for light areas INSIDE dark chrome — reports/exports; never page chrome). */
+  --paper:#FAFBFD; --paper-2:#EEF1F5; --ink-900:#0B121C; --ink-700:#2C3445; --ink-500:#5A6377;
+  /* Semantic deltas/status. */
+  --good:#4ADE80; --warn:#FACC15; --bad:#F87171;
+  /* Corner radii — the only rounded rectangles in the system (theme-independent). */
+  --ds-radius-btn:3px; --ds-radius-card:4px; --ds-radius-modal:8px;
+  /* Muted dashboard heat triad — never mixed with good/warn/bad in one visual. */
+  --health-green:#6FB582; --health-amber:#E9B23A; --health-red:#E5664A;
+  /* Reserved meanings: teal = grouped/lump-sum (deliberately NOT the accent); violet = AI/assurance. */
+  --vim-orange:#E96A2A; --vim-teal:#2BA39A; --vim-violet:#9B8CFA;
+  /* Categorical chart series — chart-scoped so series colours never collide with the fixed
+     semantic meanings above. Order is deliberate: 1 = primary series. */
+  --chart-1:#3DB8F5; --chart-2:#2BA39A; --chart-3:#9B8CFA; --chart-4:#E96A2A; --chart-5:#6A7689;
+
+  /* Type — Retina (titles/headings only) + Roboto (all general body, button text, numbers/codes/
+     table cells/eyebrows). --font-mono keeps its name and tabular-nums role but is Roboto now. */
+  --font-display:'Retina',system-ui,-apple-system,sans-serif;
+  --font-body:'Roboto',system-ui,-apple-system,sans-serif;
+  --font-mono:'Roboto',Consolas,ui-monospace,monospace;
+  --font-icon:'FluentSystemIcons-Regular','Roboto',system-ui,sans-serif;
+  --font-icon-filled:'FluentSystemIcons-Filled','Roboto',system-ui,sans-serif;
+
+  /* Spacing scale (4px base). */
+  --ds-space-1:4px; --ds-space-2:8px; --ds-space-3:12px; --ds-space-4:16px; --ds-space-5:24px; --ds-space-6:32px;
+  /* Type sizes — one tight band; hierarchy is weight + sans/mono split + colour, not many sizes.
+     small/micro extend the band DOWN for dense chrome (badges, tags, counts, tooltips). */
+  --ds-fs-micro:10px; --ds-fs-small:11px;
+  --ds-fs-eyebrow:10.5px; --ds-fs-label:12px; --ds-fs-body:13px; --ds-fs-value:14px; --ds-fs-title:15px; --ds-fs-hero:26px;
+  /* Control height — tight, consistent across button/chip/input. The small height is the dense
+     chrome row (a tree's VIEW row, a drawer's set bar): the sm icon button and whatever sits beside it. */
+  --ds-control-h:26px; --ds-control-h-sm:22px;
+  /* Hit tolerance around a small inline control (see .ds-hit). */
+  --ds-hit:4px;
+  /* Scrollbar width. A token because anything sitting BESIDE a scroll box has to reserve the same
+     strip (a column header over scrolling rows) — see --ds-col-pad. */
+  --ds-scrollbar-w:11px;
+  /* Column-grid geometry. A .ds-cols header strip and the .ds-tree rows under it are two separate
+     flex containers, so a label sits over its cell only while both read these three numbers: the
+     side padding, the gutter between value columns, and the row's own flex gap (which the cells'
+     margin subtracts back out, so the gutter is the gutter on both sides). */
+  --ds-col-pad:10px; --ds-col-gutter:8px; --ds-tree-gap:6px;
+  /* And ONE inset from a value column's right edge to the text inside it — the header's label, a
+     plain cell's digits, and a heat pill's digits all stop here, so a column reads as one stack.
+     The header's sort arrow lives in this strip (out of flow) rather than pushing the label off it. */
+  --ds-col-inset:8px;
+  /* Overlay layering bands — one scale so body-mounted overlays never fight by accident. Menu sits
+     ABOVE modal so a select's popup works inside a dialog. Intra-component sticky (table headers,
+     tree trail) keeps its small local z and is not part of this scale. */
+  --z-modal:1000; --z-menu:1100; --z-toast:1200; --z-tooltip:1300;
+  /* Stack-safe ordinal ramp (calm → hot) for EDGE-TO-EDGE stacks, where the muted --health triad
+     fails CVD on adjacent pairs. CVD-measured (surface --stage-700): dark ΔE 8.0 / normal 16.7 PASS,
+     light 8.5 / 17.4. Ordinal ⇒ small-N BY DESIGN — separation rides lightness, so ~3–5 steps is the
+     ceiling and any added step must be re-measured; do NOT append a --stack-4 casually. For arbitrary
+     categorical N use --chart-* (order-independent); for continuous magnitude use heatGradient().
+     Vocabulary-free: the consumer maps meaning onto the steps. */
+  --stack-1:#45996B; --stack-2:#C58D1D; --stack-3:#C2472F;
+}
+
+/* ---- Light twin — a pure token flip; components are unchanged. ---- */
+[data-theme="light"] {
+  --stage-950:#FAFBFD; --stage-900:#FFFFFF; --stage-800:#EEF1F5; --stage-700:#E3E8EF;
+  --stage-600:#D3DAE4; --stage-500:#B9C2D0;
+  --hairline:#D3DAE4; --hairline-soft:#B9C2D0;
+  --vim-cyan:#1273B5; --vim-cyan-700:#0E5C91; --vim-cyan-300:#3D9AD9; --vim-cyan-tint:rgba(18,115,181,0.10); --vim-cyan-tint-pct:10%;
+  --text-100:#0B121C; --text-200:#2C3445; --text-300:#5A6377; --text-400:#8891A3; --text-500:#AEB6C4;
+  --good:#1F9D55; --warn:#B7791F; --bad:#DC2626;
+  --health-green:#4C9A64; --health-amber:#C08A2D; --health-red:#CC4A31;
+  --vim-orange:#C4531B; --vim-teal:#1F7A73; --vim-violet:#6D5BD0;
+  --chart-1:#1273B5; --chart-2:#1F7A73; --chart-3:#6D5BD0; --chart-4:#C4531B; --chart-5:#8891A3;
+  --stack-1:#39895D; --stack-2:#BC8A24; --stack-3:#992A1F;
+}
+
+/* ============================================================================================
+   BASE — minimal, and scoped so linking ds.css never fights another stylesheet. A DS surface opts
+   in with `.ds-root` (sets the page fill + base type). The ONE exception is the scrollbars, which
+   are global on purpose — see below.
+   ============================================================================================ */
+.ds-root {
+  background:var(--stage-950); color:var(--text-100);
+  font-family:var(--font-body); font-size:var(--ds-fs-body); line-height:1.4;
+}
+.ds-root *, .ds-root *::before, .ds-root *::after { box-sizing:border-box; }
+.ds-root ::selection { background:var(--vim-cyan-tint); }
+
+/* ---- Links — cyan, underline on hover only. Defined once so browser blue never leaks in. ------- */
+.ds-root a, .ds-link { color:var(--vim-cyan); text-decoration:none; cursor:pointer; }
+.ds-root a:hover, .ds-link:hover { color:var(--vim-cyan-300); text-decoration:underline; }
+
+/* Flat, always-visible scrollbars (no radius). NOT scoped to .ds-root, deliberately: a scrollbar is
+   the one piece of chrome a document cannot opt into per-element, and a surface that links ds.css
+   without being a .ds-root — the app shell's own dialogs — would otherwise show the system's. Linking
+   the stylesheet is the opt-in. Safe to be this broad because these carry no radius and no accent,
+   so they read correctly on any of the dark surfaces the tokens define. */
+::-webkit-scrollbar { width:var(--ds-scrollbar-w,11px); height:var(--ds-scrollbar-w,11px); }
+::-webkit-scrollbar-track { background:var(--stage-900); }
+::-webkit-scrollbar-thumb { background:var(--stage-600); border:2px solid transparent; background-clip:content-box; }
+::-webkit-scrollbar-thumb:hover { background:var(--hairline-soft); background-clip:content-box; }
+/* The corner where a horizontal and a vertical scrollbar meet. Unstyled, Chromium paints it with
+   its own light fill — a bright square against every dark pane — so it takes the track's surface. */
+::-webkit-scrollbar-corner { background:var(--stage-900); }
+
+/* ============================================================================================
+   LAYOUT — the named assembly primitives. Pages are built from these four; ad-hoc flex inline
+   styles are the smell they replace. All gaps come from the spacing tokens — spacing between
+   siblings is ALWAYS the container's gap, never a child margin.
+   ============================================================================================ */
+
+/* ---- ds-shell (full-viewport app frame: header rows + one ds-split filling the rest) ---------- */
+.ds-shell { display:flex; flex-direction:column; height:100vh; overflow:hidden; background:var(--stage-950); }
+
+/* ---- ds-split (main work area + docked ds-panels, side by side as plain flex children) -------- */
+.ds-split { display:flex; flex:1 1 auto; min-height:0; }
+.ds-split__main { flex:1 1 auto; min-width:0; overflow:auto; }
+/* Resize handle between main and a panel — a grabbable hairline; cyan while hovered/dragging. */
+.ds-split__handle { flex:0 0 5px; cursor:col-resize; background:transparent;
+  border-left:1px solid var(--hairline); }
+.ds-split__handle:hover, .ds-split__handle.ds-active { border-left-color:var(--vim-cyan); background:var(--vim-cyan-tint); }
+
+/* ---- ds-stack / ds-row (gap containers — vertical / horizontal) ------------------------------- */
+.ds-stack { display:flex; flex-direction:column; gap:var(--ds-space-3); min-width:0; }
+.ds-stack--tight { gap:var(--ds-space-2); }
+.ds-stack--loose { gap:var(--ds-space-5); }
+.ds-row { display:flex; align-items:center; gap:var(--ds-space-2); min-width:0; }
+.ds-row--loose { gap:var(--ds-space-3); }
+.ds-row--wrap { flex-wrap:wrap; }
+.ds-row__spacer { flex:1 1 auto; }
+
+/* ---- ds-fill (a flex child that takes the leftover space of its ds-stack / ds-split parent) -----
+   A flex child with no `flex` sizes to its CONTENT, which silently breaks anything that measures
+   its own box: a virtualizing list inside a content-sized chain reads clientHeight 0 and renders
+   zero rows while looking fully built (chrome painted, empty row window). Every link from the
+   scrolling box up to the sized ancestor needs this. */
+.ds-fill { flex:1 1 auto; min-height:0; min-width:0; }
+
+/* ---- ds-pad (the only padding utility — token steps) ------------------------------------------ */
+.ds-pad { padding:var(--ds-space-3); }
+.ds-pad--loose { padding:var(--ds-space-4); }
+
+/* ---- ds-cardgrid (responsive tile grid for thumbnail / dashboard cards) ------------------------ */
+.ds-cardgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:var(--ds-space-4); }
+
+/* ============================================================================================
+   ATOMS
+   ============================================================================================ */
+
+/* ---- ds-label (text atom) --------------------------------------------------------------------
+   Variants set the family/weight/colour band; there is no size ladder beyond the token band. */
+.ds-label { display:inline-block; color:var(--text-200); font-family:var(--font-body); font-size:var(--ds-fs-body); }
+/* Same optical bias as .ds-chip, by a different means: an eyebrow is bare text with no box of its
+   own, so padding would make the ROW taller. `top` moves the glyphs and nothing else. */
+.ds-label--eyebrow { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:1px;
+  text-transform:uppercase; color:var(--text-300); position:relative; top:1px; }
+.ds-label--title { font-family:var(--font-display); font-size:var(--ds-fs-title); font-weight:700; color:var(--text-100); letter-spacing:.2px; }
+.ds-label--body { font-size:var(--ds-fs-body); color:var(--text-200); }
+.ds-label--dim { font-size:var(--ds-fs-label); color:var(--text-400); }
+.ds-label--value { font-family:var(--font-mono); font-size:var(--ds-fs-value); font-variant-numeric:tabular-nums;
+  color:var(--text-100); }
+/* One line, as wide as the box allows, ellipsized past that. */
+.ds-label--truncate { display:block; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ---- ds-icon (FluentUI System Icons glyph) ---------------------------------------------------- */
+.ds-icon { display:inline-flex; align-items:center; justify-content:center; font-family:var(--font-icon);
+  font-size:var(--ds-fs-title); line-height:1; color:var(--text-300); user-select:none; }
+.ds-icon--sm { font-size:var(--ds-fs-label); } .ds-icon--lg { font-size:18px; }
+.ds-icon--filled { font-family:var(--font-icon-filled); }
+
+/* ---- ds-selicon (a state glyph before an enum label — shape language for lifecycles) ---------- */
+/* One mono font for the whole glyph family: mixed fallbacks render ● and ○ at different sizes. */
+.ds-selicon { color:var(--text-300); margin-right:6px; flex:0 0 auto; font-family:var(--font-mono); }
+/* Header flavour: the glyph is CSS content so the header's TEXT stays the column label alone. */
+.ds-thicon { color:var(--text-300); margin-right:5px; font-family:var(--font-mono); }
+.ds-thicon::before { content:attr(data-glyph); }
+/* A marked header's mark + label centre on one flex axis — vertical-align cannot make a box (the
+   dot) and a baseline glyph agree, so the wrap does. */
+.ds-thwrap { display:inline-flex; align-items:center; vertical-align:middle; }
+
+/* ---- ds-seldot (a colour-filled circle before an enum label — .ds-selicon's colour sibling; — the value's colour where the choice is;
+   distinct from .ds-dot, the round standalone indicator) ---------------------------------------- */
+.ds-seldot { display:inline-block; width:9px; height:9px; margin-right:6px; flex:0 0 auto;
+  vertical-align:middle; border-radius:50%;
+  border:1px solid color-mix(in srgb, var(--text-100) 25%, transparent); }
+
+/* ---- ds-dot (the ONE round primitive — status) ----------------------------------------------- */
+.ds-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--text-400); flex:0 0 auto; }
+.ds-dot--good{background:var(--good)} .ds-dot--warn{background:var(--warn)} .ds-dot--bad{background:var(--bad)}
+.ds-dot--cyan{background:var(--vim-cyan)} .ds-dot--teal{background:var(--vim-teal)} .ds-dot--violet{background:var(--vim-violet)}
+
+/* ---- ds-btn (button) -------------------------------------------------------------------------
+   Flat fill + 1px hairline. Primary = cyan tint fill + cyan border. Ghost = borderless. */
+.ds-btn { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  height:var(--ds-control-h); padding:0 12px; border:1px solid var(--hairline);
+  background:var(--stage-700); color:var(--text-100);
+  font-family:var(--font-body); font-size:var(--ds-fs-label); font-weight:600; cursor:pointer;
+  white-space:nowrap; /* a fixed-height button with a wrapped label is a broken button */
+  border-radius:var(--ds-radius-btn); box-shadow:none; }
+.ds-btn:hover { border-color:var(--vim-cyan); background:var(--stage-600); }
+.ds-btn:active { background:var(--stage-800); }
+.ds-btn .ds-icon { color:inherit; font-size:var(--ds-fs-body); }
+.ds-btn--primary { border-color:var(--vim-cyan); background:var(--vim-cyan-tint); color:var(--text-100); }
+.ds-btn--primary:hover { background:var(--vim-cyan-tint); border-color:var(--vim-cyan-300); }
+.ds-btn--ghost { background:transparent; border-color:transparent; color:var(--text-300); }
+.ds-btn--ghost:hover { color:var(--text-100); border-color:var(--hairline); background:transparent; }
+.ds-btn.ds-active { border-color:var(--vim-cyan); background:var(--vim-cyan-tint); color:var(--text-100); }
+.ds-btn:disabled, .ds-btn.ds-disabled { opacity:.4; pointer-events:none; }
+.ds-btn--danger { border-color:var(--bad); background:color-mix(in srgb,var(--bad) 14%,transparent); color:var(--text-100); }
+.ds-btn--danger:hover { border-color:var(--bad); background:color-mix(in srgb,var(--bad) 22%,transparent); }
+/* Square icon-only button — same fill/hairline contract as ds-btn, control-height square.
+   line-height:1 is what centres a glyph: it makes the line box the icon font's em box, and the icon
+   font draws its glyphs symmetric about the middle of that box. A character that font does not
+   carry renders in a text font, whose taller, asymmetric box drops the ink low in the square. */
+.ds-iconbtn { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  width:var(--ds-control-h); height:var(--ds-control-h); padding:0; border:1px solid var(--hairline);
+  background:var(--stage-700); color:var(--text-300); cursor:pointer; font-size:var(--ds-fs-label); line-height:1; border-radius:var(--ds-radius-btn);
+  font-family:var(--font-icon); /* icon buttons hold glyphs by definition — consumers set content, not the font */ }
+.ds-iconbtn:hover { color:var(--text-100); border-color:var(--vim-cyan); background:var(--stage-600); }
+.ds-iconbtn:disabled, .ds-iconbtn.ds-disabled { opacity:.4; pointer-events:none; }
+.ds-iconbtn:focus-visible { outline:1px solid var(--vim-cyan); outline-offset:1px; }
+/* Danger icon action (delete in an action row). */
+.ds-iconbtn--danger:hover { color:var(--bad); border-color:var(--bad); background:color-mix(in srgb,var(--bad) 14%,transparent); }
+/* Small squares for dense chrome rows (a tree's VIEW row, a drawer row). 22px holds a 20px content
+   box, 20px an 18px one — inner glyphs must leave an EVEN pixel split (12px font, not 13). */
+.ds-iconbtn--sm { width:var(--ds-control-h-sm); height:var(--ds-control-h-sm); font-size:12px; }
+.ds-iconbtn--xs { width:20px; height:20px; font-size:12px; }
+.ds-iconbtn--filled { font-family:var(--font-icon-filled); }
+/* The active tint lies OVER the button's own fill rather than replacing it: a translucent background
+   reads as a hole to the OSR hit-test, and an active button over a viewport would pass its press to
+   the camera. */
+/* The tint composited over the stage as ONE solid colour: an active button stays opaque (a see-through
+   control is a hole the 3D takes the click through). */
+.ds-iconbtn.ds-active { border-color:var(--vim-cyan); background:color-mix(in srgb, var(--vim-cyan) var(--vim-cyan-tint-pct), var(--stage-700)); color:var(--text-100); }
+/* Drawn chevrons: geometric rendering centers symmetrically at any DPI, where grid-fitted font
+   glyphs below ~12px land a pixel off. */
+.ds-iconbtn--chev-up::before, .ds-iconbtn--chev-down::before, .ds-iconbtn--chev-left::before, .ds-iconbtn--chev-right::before {
+  content:""; width:7px; height:7px;
+  border-top:1.5px solid currentColor; border-right:1.5px solid currentColor; }
+.ds-iconbtn--chev-up::before { transform:translateY(2px) rotate(-45deg); }
+.ds-iconbtn--chev-down::before { transform:translateY(-2px) rotate(135deg); }
+.ds-iconbtn--chev-left::before { transform:translateX(2px) rotate(-135deg); }
+.ds-iconbtn--chev-right::before { transform:translateX(-2px) rotate(45deg); }
+/* Drawn SVG icons (palette, shuffle, edit, menu): a shape a glyph font can't carry, painted with
+   currentColor so hover / active / disabled flow into it. 14px in every square size leaves an
+   even split (22px button = 20px box = 3px each side; 20px = 18px box = 2px). */
+.ds-iconbtn__svg { display:block; width:14px; height:14px; fill:currentColor; }
+/* ds-rank — the numbered square riding a 20px pill or row: 14px leaves an even 2px frame inside an
+   18px content box. */
+.ds-rank { display:inline-flex; align-items:center; justify-content:center; min-width:14px; height:14px;
+  flex:0 0 auto; background:var(--vim-cyan-tint); color:var(--vim-cyan); font-size:var(--ds-fs-micro); font-weight:600; }
+/* Action row — a right-aligned run of ds-iconbtns (table rows, list items, tile headers).
+   Inside ds-etable rows they reveal on row hover so grids don't read as button fields. */
+.ds-actions { display:flex; justify-content:flex-end; gap:4px; }
+.ds-etable tbody tr .ds-actions { visibility:hidden; }
+.ds-etable tbody tr:hover .ds-actions, .ds-etable tbody tr.ds-sel .ds-actions { visibility:visible; }
+
+/* ---- ds-chip (tag / letter chip) -------------------------------------------------------------
+   Square (never rounded). Tone tints the fill + border; text is mono for codes/counts. */
+/* padding-top 2px, bottom 0: a chip carries FIGURES and CAPS, which have no descenders, so the
+   centred line box rides a pixel high inside the 16px interior (measured: 3px of air above the ink,
+   5px below). Two pixels of top padding move the content down exactly one, because the line box
+   re-centres in what is left. Flex still does the centring — this only biases it. */
+.ds-chip { display:inline-flex; align-items:center; gap:5px; height:18px; padding:2px 6px 0;
+  border:1px solid var(--hairline); background:var(--stage-800); color:var(--text-200);
+  font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:.4px; white-space:nowrap;
+  border-radius:0; }
+.ds-chip--cyan   { color:var(--vim-cyan);    border-color:var(--vim-cyan-700);  background:var(--vim-cyan-tint); }
+.ds-chip--teal   { color:var(--vim-teal);    border-color:var(--vim-teal);      background:color-mix(in srgb,var(--vim-teal) 14%,transparent); }
+.ds-chip--good   { color:var(--good);        border-color:var(--good);          background:color-mix(in srgb,var(--good) 14%,transparent); }
+.ds-chip--warn   { color:var(--warn);        border-color:var(--warn);          background:color-mix(in srgb,var(--warn) 16%,transparent); }
+.ds-chip--bad    { color:var(--bad);         border-color:var(--bad);           background:color-mix(in srgb,var(--bad) 14%,transparent); }
+.ds-chip--violet { color:var(--vim-violet);  border-color:var(--vim-violet);    background:color-mix(in srgb,var(--vim-violet) 16%,transparent); }
+.ds-chip--orange { color:var(--vim-orange);  border-color:var(--vim-orange);    background:color-mix(in srgb,var(--vim-orange) 16%,transparent); }
+.ds-chip--clickable { cursor:pointer; }
+.ds-chip--clickable:hover { border-color:var(--text-300); }
+.ds-chip--clickable:focus-visible { outline:1px solid var(--vim-cyan); outline-offset:1px; }
+
+/* ---- ds-input (text field) ------------------------------------------------------------------- */
+.ds-input { height:var(--ds-control-h); width:100%; padding:0 8px; border:1px solid var(--hairline);
+  background:var(--stage-900); color:var(--text-100);
+  font-family:var(--font-body); font-size:var(--ds-fs-label); border-radius:0; outline:none; }
+.ds-input::placeholder { color:var(--text-400); }
+.ds-input:focus { border-color:var(--vim-cyan); }
+.ds-input:disabled { opacity:.4; }
+.ds-input.ds-input--mono { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+/* Inline variant — bare underline edit-in-place (table cells, editable values). */
+.ds-input--inline { height:auto; width:100%; min-width:48px; padding:0; border:0; background:transparent;
+  border-bottom:1px dashed var(--hairline-soft); color:inherit; font:inherit; outline:none; }
+.ds-input--inline:hover { border-bottom-color:var(--text-300); }
+.ds-input--inline:focus { border-bottom-color:var(--vim-cyan); }
+
+/* ---- ds-check (tri-state selection checkbox — the TriStateCheck primitive) --------------------
+   Custom control (not native) so the partial state reads as the cyan dash. Checked = cyan check;
+   partial = "≥1 descendant selected" (clicking a partial CHECKS everything under it). The check mark
+   is CSS-drawn (a rotated border) so it renders identically everywhere, not an icon-font glyph. */
+/* ds-hit — the TOLERANT hit zone for a small inline control (a checkbox, a word that opens a menu, a
+   tiny toggle): --ds-hit (4px) of padding taken back by a negative margin, so the layout does not
+   move while the click and hover areas grow to a target a pointer can land on. Put it on any
+   control whose visible shape is under ~20px; the hover styling then covers the zone too, so what
+   answers and what lights are one shape. ds-check carries it by default. */
+.ds-hit { padding:var(--ds-hit); margin:calc(-1 * var(--ds-hit)); }
+.ds-check { display:inline-flex; align-items:center; gap:8px; padding:var(--ds-hit); margin:calc(-1 * var(--ds-hit)); border:0; background:transparent;
+  cursor:pointer; color:var(--text-200); font-family:var(--font-body); font-size:var(--ds-fs-label);
+  user-select:none; }
+.ds-check__box { position:relative; flex:0 0 auto; width:14px; height:14px; border:1px solid var(--hairline-soft);
+  background:var(--stage-900); border-radius:0; }
+.ds-check:hover .ds-check__box { border-color:var(--vim-cyan); }
+.ds-check.ds-on .ds-check__box, .ds-check.ds-partial .ds-check__box { border-color:var(--vim-cyan); background:var(--vim-cyan-tint); }
+.ds-check.ds-on .ds-check__box::after { content:""; position:absolute; left:4px; top:1px; width:4px; height:8px;
+  border:solid var(--vim-cyan); border-width:0 2px 2px 0; transform:rotate(45deg); }   /* the check */
+.ds-check.ds-partial .ds-check__box::after { content:""; position:absolute; left:2px; right:2px; top:6px; height:2px;
+  background:var(--vim-cyan); }                                                          /* the cyan dash */
+.ds-check.ds-disabled { opacity:.4; pointer-events:none; }
+
+/* ---- The CHECKED-RULES states (tree checkboxes driven by vf-checked-rules) ---------------------
+   Green is the include family, red the exclude — semantic (--good/--bad), not the selection cyan,
+   because checked-ness and selected-ness are different statements and must not share a colour.
+   Five modifiers on .ds-check; the empty state is the bare box above.
+     include        — green check: the node's own Include rule.
+     includeInherit — DIMMED green check: covered by an ancestor's rule. One inherit dim level for
+                      both families (--ds-chk-inherit-*), well apart from the own-rule colour, so
+                      "mine" vs "from a parent" reads at a glance.
+     includePartial — green dash: some descendant is included, this node is not.
+     exclude        — red diagonal THROUGH the box: an exception carved out of an included parent.
+     excludeInherit — DIMMED red diagonal: covered by an ancestor's exception. INERT — there are
+                      no exceptions to exceptions, so it is not a control (the button is disabled;
+                      the cursor says so). */
+:root { --ds-chk-inherit-good:color-mix(in srgb, var(--good) 40%, var(--stage-600));
+        --ds-chk-inherit-bad:color-mix(in srgb, var(--bad) 40%, var(--stage-600)); }
+/* Each state sets --chk-c (its mark/border colour); the two mark SHAPES — the ✓ and the
+   diagonal — are written once against it. Inherit states are the same shapes, dimmer colour. */
+.ds-check.ds-chk--include .ds-check__box {
+  --chk-c:var(--good); background:color-mix(in srgb, var(--good) 12%, transparent); }
+.ds-check.ds-chk--includePartial .ds-check__box {
+  --chk-c:var(--good); background:color-mix(in srgb, var(--good) 12%, transparent); }
+.ds-check.ds-chk--includeInherit .ds-check__box {
+  --chk-c:var(--ds-chk-inherit-good); background:color-mix(in srgb, var(--good) 6%, transparent); }
+.ds-check.ds-chk--exclude .ds-check__box {
+  --chk-c:var(--bad); background:color-mix(in srgb, var(--bad) 10%, transparent); }
+.ds-check.ds-chk--excludeInherit .ds-check__box {
+  --chk-c:var(--ds-chk-inherit-bad); background:color-mix(in srgb, var(--bad) 5%, transparent); }
+.ds-check[class*=" ds-chk--"] .ds-check__box { border-color:var(--chk-c); }
+.ds-check.ds-chk--include .ds-check__box::after,
+.ds-check.ds-chk--includeInherit .ds-check__box::after {
+  content:""; position:absolute; left:4px; top:1px; width:4px; height:8px;
+  border:solid var(--chk-c); border-width:0 2px 2px 0; transform:rotate(45deg); }
+.ds-check.ds-chk--includePartial .ds-check__box::after {
+  content:""; position:absolute; left:2px; right:2px; top:6px; height:2px; background:var(--chk-c); }
+.ds-check.ds-chk--exclude .ds-check__box::after,
+.ds-check.ds-chk--excludeInherit .ds-check__box::after {
+  content:""; position:absolute; left:-1px; top:5px; width:14px; height:2px;
+  background:var(--chk-c); transform:rotate(-45deg); }
+.ds-check.ds-chk--excludeInherit { cursor:default; }
+.ds-check.ds-chk--excludeInherit:hover .ds-check__box { border-color:var(--chk-c); }
+
+/* Level pill: the fixed grouping-level marker ("CAT", "FAM") each group row wears before its
+   label — square, mono, quiet. */
+.ds-tree__lvl { flex:0 0 auto; margin-right:6px; padding:1px 4px; border:1px solid var(--hairline-soft);
+  background:var(--stage-700); color:var(--text-400); font-family:var(--font-mono);
+  font-size:calc(var(--ds-fs-eyebrow) - 1px); letter-spacing:.5px; line-height:1.4; border-radius:0; }
+/* The written exception note on a checked parent ("−2 exceptions"): text, because the count is
+   the information. Muted red — it reports exclusions. */
+.ds-tree__exc { flex:0 0 auto; margin-left:6px; font-size:calc(var(--ds-fs-label) - 1px);
+  color:color-mix(in srgb, var(--bad) 70%, var(--text-400)); white-space:nowrap; }
+
+/* A check-all cell in a ds-cols header sits over a virtual tree's check column, whose rows carry
+   no left padding — the header drops its own so the boxes line up. The NAME column then indents to
+   where a depth-0 row's LABEL starts: two item gaps (6+6, check|toggle and toggle|label) + the
+   toggle's padding (14) + the caret triangle (5) + its margin (7) = 38px. */
+.ds-cols:has(> .ds-tree__check) { padding-left:0; }
+.ds-cols > .ds-tree__check + .ds-cols__col { padding-left:38px; }
+
+/* ---- ds-radio (single-choice \u2014 square-in-square, NOT round; the dot stays the only circle) -----
+   For stacked option lists with long labels or per-option help. 2\u20134 short inline options should
+   use ds-segmented instead. Same anatomy as ds-check; the selected mark is a centered cyan square. */
+.ds-radio { display:inline-flex; align-items:center; gap:8px; padding:0; border:0; background:transparent;
+  cursor:pointer; color:var(--text-200); font-family:var(--font-body); font-size:var(--ds-fs-label);
+  user-select:none; }
+.ds-radio__box { position:relative; flex:0 0 auto; width:14px; height:14px; border:1px solid var(--hairline-soft);
+  background:var(--stage-900); border-radius:0; }
+.ds-radio:hover .ds-radio__box { border-color:var(--vim-cyan); }
+.ds-radio.ds-on { color:var(--text-100); }
+.ds-radio.ds-on .ds-radio__box { border-color:var(--vim-cyan); background:var(--vim-cyan-tint); }
+.ds-radio.ds-on .ds-radio__box::after { content:""; position:absolute; inset:3px; background:var(--vim-cyan); }
+.ds-radio.ds-disabled { opacity:.4; pointer-events:none; }
+.ds-radio:focus-visible { outline:1px solid var(--vim-cyan); outline-offset:1px; }
+.ds-radiogroup { display:flex; flex-direction:column; gap:8px; }
+.ds-radiogroup--row { flex-direction:row; gap:16px; }
+
+/* ---- ds-divider (1px hairline separator; horizontal / vertical / labelled) -------------------- */
+.ds-divider { border:0; background:var(--hairline); }
+.ds-divider--h { width:100%; height:1px; margin:var(--ds-space-2) 0; }
+.ds-divider--v { width:1px; align-self:stretch; margin:0 var(--ds-space-2); background:var(--hairline); }
+.ds-divider--label { display:flex; align-items:center; gap:8px; background:none; height:auto;
+  color:var(--text-400); font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow);
+  text-transform:uppercase; letter-spacing:1px; margin:var(--ds-space-2) 0; }
+.ds-divider--label::before, .ds-divider--label::after { content:""; flex:1; height:1px; background:var(--hairline); }
+
+/* ---- ds-tabpanel (the body a ds-tabs strip switches between) -----------------------------------
+   ds-tabs renders the STRIP; the panels are the page's, and every tabbed page was re-deriving this
+   pair. Exactly one panel carries ds-open: it joins the parent's height chain (so a scrolling or
+   virtualizing child measures a real box) while the others leave the layout entirely. This cannot be
+   ds-fill — that carries display:flex, which would beat the display:none that hides a panel. */
+.ds-tabpanel { display:none; flex-direction:column; gap:var(--ds-space-3); min-height:0; }
+.ds-tabpanel.ds-open { display:flex; flex:1 1 auto; }
+
+/* ---- ds-tabs (flat segmented tab strip — the LensSwitcher essence) ----------------------------
+   Active tab is marked by a 2px cyan keyline on the shared bottom hairline (no fill, no radius).
+   The strip is one row of constant height whatever the tab count: it never wraps and never scrolls.
+   Tabs past the strip's width are taken out of the flow (ds-tab--overflow) and reached through the
+   trailing … button, which lists every tab in a menu — so a host with an open-ended tab count
+   (documents, windows) reads at a glance instead of being dragged sideways. */
+.ds-tabs { display:flex; flex:0 0 auto; flex-wrap:nowrap; overflow:hidden;
+  border-bottom:1px solid var(--hairline); }
+.ds-tab { appearance:none; background:transparent; border:0; border-bottom:2px solid transparent;
+  flex:0 0 auto; padding:7px 14px; color:var(--text-300); cursor:pointer; white-space:nowrap;
+  font-family:var(--font-body); font-size:var(--ds-fs-label); font-weight:600; border-radius:0; }
+/* Measured out of the strip — the tab is still open, and still in the … menu. */
+.ds-tab--overflow { display:none; }
+.ds-tab:hover { color:var(--text-100); }
+.ds-tab.ds-active { color:var(--text-100); border-bottom-color:var(--vim-cyan); }
+/* Disabled by CLASS, not attribute — pointer events must survive for the explaining tooltip — so
+   the no-reaction look is spelled out: dimmed, hover changes nothing, arrow cursor. */
+.ds-tab.ds-disabled, .ds-tab.ds-disabled:hover { color:var(--text-400); opacity:.55; cursor:default; }
+.ds-tab .ds-chip { margin-left:6px; }
+/* Per-tab close affordance — faint until the tab or the × itself is hovered. The padding is the hit
+   area: a bare glyph is only a few pixels of target. The negative right margin gives that padding
+   back to the flow, so the tab stays exactly as wide as a tab with a bare × and the overflow
+   measurement sees no change; the gap before the glyph is the 3px margin plus the 5px padding. */
+.ds-tab__close { margin-left:3px; margin-right:-5px; padding:5px;
+  color:var(--text-500); font-size:var(--ds-fs-title); line-height:1; }
+.ds-tab:hover .ds-tab__close { color:var(--text-300); }
+.ds-tab__close:hover { color:var(--text-100); }
+/* Overflow trigger — a tab's type in the strip's dim tone, brightening on hover. Shown only while
+   tabs are hidden, and reserved during measurement so it can never be the thing that gets clipped. */
+.ds-tabs__more { appearance:none; display:none; align-items:center; flex:0 0 auto;
+  background:transparent; border:0; border-bottom:2px solid transparent; padding:7px 10px;
+  color:var(--text-400); cursor:pointer; line-height:1; border-radius:0;
+  font-family:var(--font-body); font-size:var(--ds-fs-label); font-weight:600; }
+.ds-tabs__more.ds-show { display:inline-flex; }
+.ds-tabs__more:hover { color:var(--text-100); }
+/* Filled variant — active tab is a solid cyan-tint block (workflow sub-navigation). */
+.ds-tabs--filled { border-bottom:1px solid var(--hairline); }
+.ds-tabs--filled .ds-tab { border-bottom:0; margin-bottom:0; }
+.ds-tabs--filled .ds-tab.ds-active { background:var(--vim-cyan-tint); box-shadow:inset 0 -2px 0 var(--vim-cyan); }
+
+/* ---- ds-select (dropdown with a flat, OSR-safe custom popup) ----------------------------------
+   Native <select> popups don't composite in windowless CEF, so the list is a custom opaque menu on
+   document.body (see ds-select.ts). The chevron + selected-check are CSS-drawn (no icon-font glyph) so
+   they render identically everywhere. */
+.ds-select { display:inline-flex; align-items:center; justify-content:space-between; gap:8px;
+  height:var(--ds-control-h); min-width:160px; padding:0 8px; border:1px solid var(--hairline);
+  background:var(--stage-900); color:var(--text-100); cursor:pointer; border-radius:0;
+  font-family:var(--font-body); font-size:var(--ds-fs-label); }
+.ds-select:hover, .ds-select.ds-open { border-color:var(--vim-cyan); }
+/* Inline variant — bare underline enum editor to match ds-input--inline in dense grids. */
+.ds-select--inline { height:auto; min-width:48px; padding:2px 0; border:0; background:transparent;
+  border-bottom:1px dashed var(--hairline-soft); }
+.ds-select--inline:hover, .ds-select--inline.ds-open { border-bottom-color:var(--vim-cyan); }
+/* Block variant — fills its container, so a select stacked above a ds-input in a ds-field shares
+   the input's edges instead of ending wherever its label happens to. */
+.ds-select--block { display:flex; width:100%; }
+/* Edit-state tint (shared clean/pending/invalid contract) — text colour comes from .ds-pending /
+   .ds-invalid; the border echoes it. Works for both the boxed and the inline (bottom-only) select. */
+.ds-select.ds-pending { border-color:var(--warn); }
+.ds-select.ds-invalid { border-color:var(--bad); }
+.ds-select__label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-select__label.ds-placeholder { color:var(--text-400); }
+/* Dim trailing context after the label (a count, a position) — content first, context quiet. */
+.ds-select__hint { flex:0 0 auto; margin-left:auto; color:var(--text-400); font-size:var(--ds-fs-eyebrow); }
+.ds-select__chev { flex:0 0 auto; width:0; height:0; border-left:4px solid transparent;
+  border-right:4px solid transparent; border-top:5px solid var(--text-300); }   /* CSS triangle */
+
+/* Popup menu (shared by ds-select; z above modals so a dropdown inside a panel isn't clipped). The
+   backdrop is TRANSPARENT — a dropdown must not tint the screen. In-page click-away still lands on
+   it (DOM hit-testing ignores alpha); a press over the 3D viewport falls through to the camera and
+   the HOST closes the menu via the dismiss broadcast (see dom.ts registerDismissable). Menu fill is
+   fully opaque. */
+.ds-menu-backdrop { position:fixed; inset:0; z-index:var(--z-menu); display:none; background:transparent; }
+.ds-menu-backdrop.ds-open { display:block; }
+.ds-menu { position:fixed; z-index:var(--z-menu); display:none; min-width:160px; max-width:min(480px, calc(100vw - 16px)); max-height:280px; overflow-y:auto;
+  padding:4px; background:var(--stage-800); border:1px solid var(--hairline); border-radius:0; box-shadow:none; }
+.ds-menu.ds-open { display:block; }
+.ds-menu__item { position:relative; display:flex; align-items:center; gap:8px; padding:6px 22px 6px 10px;
+  cursor:pointer; white-space:nowrap; color:var(--text-200); border-radius:0;
+  font-family:var(--font-body); font-size:var(--ds-fs-label); }
+/* a long label (an 80-character preset name) ellipsizes inside the menu's width cap; the hint keeps its place */
+.ds-menu__label { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.ds-menu__item:hover { background:var(--vim-cyan-tint); color:var(--text-100); }
+.ds-menu__item.ds-selected { color:var(--vim-cyan); }
+.ds-menu__item.ds-selected::after { content:""; position:absolute; right:10px; top:7px; width:4px; height:8px;
+  border:solid var(--vim-cyan); border-width:0 2px 2px 0; transform:rotate(45deg); }   /* the check */
+
+/* ---- ds-search (search field = ds-input + CSS-drawn magnifier + a clear button) ---------------- */
+.ds-search { position:relative; display:inline-flex; align-items:center; width:100%; }
+.ds-search .ds-input { padding-left:26px; padding-right:24px; }
+.ds-search__icon { position:absolute; left:9px; width:11px; height:11px; pointer-events:none; }
+.ds-search__icon::before { content:""; position:absolute; left:0; top:0; width:8px; height:8px;
+  border:1.5px solid var(--text-400); border-radius:50%; }                       /* magnifier lens (icon exception) */
+.ds-search__icon::after { content:""; position:absolute; left:7px; top:8px; width:4px; height:1.5px;
+  background:var(--text-400); transform:rotate(45deg); transform-origin:left; }   /* handle */
+/* A search that commits (onSubmit): the magnifier is the button that asks. A 3px pad grows its hit
+   area to 17px; the drawing moves by the same 3px, so the lens sits exactly where the span's does. */
+.ds-search__icon--go { left:6px; padding:3px; box-sizing:content-box; border:0; margin:0;
+  background:transparent; border-radius:0; pointer-events:auto; cursor:pointer; }
+.ds-search__icon--go::before { left:3px; top:3px; }
+.ds-search__icon--go::after { left:10px; top:11px; }
+.ds-search__icon--go:hover::before { border-color:var(--text-100); }
+.ds-search__icon--go:hover::after { background:var(--text-100); }
+.ds-search__clear { position:absolute; right:5px; display:none; align-items:center; justify-content:center;
+  width:16px; height:16px; padding:0; border:0; background:transparent; color:var(--text-400);
+  cursor:pointer; font-size:var(--ds-fs-value); line-height:1; border-radius:0; }
+.ds-search__clear.ds-show { display:flex; }
+.ds-search__clear:hover { color:var(--text-100); }
+
+/* ---- ds-bar (determinate progress / meter) --------------------------------------------------- */
+.ds-bar { position:relative; width:100%; height:6px; background:var(--stage-700); border:1px solid var(--hairline);
+  border-radius:0; overflow:hidden; }
+.ds-bar__fill { height:100%; background:var(--vim-cyan); }
+.ds-bar--good .ds-bar__fill { background:var(--good); }
+.ds-bar--warn .ds-bar__fill { background:var(--warn); }
+.ds-bar--bad  .ds-bar__fill { background:var(--bad); }
+.ds-bar--teal .ds-bar__fill { background:var(--vim-teal); }
+
+/* ---- ds-segmented (mutually-exclusive square segments; cyan active) --------------------------- */
+/* The strip carries the control's surface, opaque like every other control's (ds-select, ds-input):
+   the segments themselves are transparent or a cyan tint, and an interactive element with no opaque
+   pixel under it is a click that falls through an OSR page to the 3D camera. */
+.ds-segmented { display:inline-flex; min-width:0; border:1px solid var(--hairline); border-radius:0;
+  background:var(--stage-900); }
+.ds-seg { appearance:none; height:var(--ds-control-h); padding:0 12px; border:0; border-right:1px solid var(--hairline);
+  background:transparent; color:var(--text-300); cursor:pointer; border-radius:0;
+  font-family:var(--font-body); font-size:var(--ds-fs-label); font-weight:600;
+  /* a fixed-height button with a wrapped label is a broken button: in a narrow row the strip
+     shrinks and the caption ellipsizes instead of taking a second line */
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-seg:last-child { border-right:0; }
+.ds-seg:hover { color:var(--text-100); }
+.ds-seg.ds-active { background:var(--vim-cyan-tint); color:var(--text-100); }
+
+/* ---- ds-tip (OSR-safe hover tooltip — the fix for native title= not rendering) ---------------- */
+.ds-tip { position:fixed; z-index:var(--z-tooltip); /* transient hover UI, above every overlay band */ display:none; max-width:260px; padding:5px 8px;
+  background:var(--stage-700); border:1px solid var(--hairline); color:var(--text-100);
+  font-family:var(--font-body); font-size:var(--ds-fs-small); line-height:1.35; border-radius:0; box-shadow:none;
+  white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none; }
+.ds-tip.ds-show { display:block; }
+
+/* ---- ds-conf (confidence / assurance tier — a single-letter chip) ----------------------------- */
+.ds-conf { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+  border:1px solid var(--hairline); background:var(--stage-800); color:var(--text-200);
+  font-family:var(--font-mono); font-size:var(--ds-fs-small); font-weight:600; border-radius:0; }
+.ds-conf--high { color:var(--good); border-color:var(--good); background:color-mix(in srgb,var(--good) 14%,transparent); }
+.ds-conf--med  { color:var(--vim-cyan); border-color:var(--vim-cyan-700); background:var(--vim-cyan-tint); }
+.ds-conf--low  { color:var(--warn); border-color:var(--warn); background:color-mix(in srgb,var(--warn) 16%,transparent); }
+.ds-conf--excluded { color:var(--text-400); border-color:var(--hairline); background:transparent; text-decoration:line-through; }
+
+/* ---- ds-textarea (multiline text) ------------------------------------------------------------- */
+.ds-textarea { width:100%; min-height:64px; padding:6px 8px; border:1px solid var(--hairline);
+  background:var(--stage-900); color:var(--text-100); border-radius:0; outline:none; resize:vertical;
+  font-family:var(--font-body); font-size:var(--ds-fs-label); line-height:1.4; }
+.ds-textarea::placeholder { color:var(--text-400); }
+.ds-textarea:focus { border-color:var(--vim-cyan); }
+.ds-textarea:disabled { opacity:.4; }
+
+/* ---- ds-number (numeric stepper) --------------------------------------------------------------
+   The box is sized for the values a stepper holds (five mono digits fit the 64px field), never for
+   its column: it stays inline-flex so a row can put a unit or a reset beside it. The ▴▾ stack is
+   also the scrub surface — hence ns-resize rather than a pointer on it. ---------------------------- */
+.ds-number { display:inline-flex; align-items:stretch; height:var(--ds-control-h); border:1px solid var(--hairline);
+  background:var(--stage-900); }
+.ds-number:focus-within { border-color:var(--vim-cyan); }
+.ds-number__input { width:64px; padding:0 6px; border:0; background:transparent; color:var(--text-100);
+  text-align:right; outline:none; font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:var(--ds-fs-label); }
+.ds-number__btns { display:flex; flex-direction:column; border-left:1px solid var(--hairline); cursor:ns-resize; }
+.ds-number__btn { flex:1; width:18px; padding:0; border:0; background:var(--stage-700); color:var(--text-300);
+  cursor:ns-resize; font-size:8px; line-height:1; display:flex; align-items:center; justify-content:center; }
+.ds-number__btn:hover { background:var(--stage-600); color:var(--text-100); }
+.ds-number__btn + .ds-number__btn { border-top:1px solid var(--hairline); }
+/* Mid-scrub the control stops being selectable, so a fast sweep can't paint a text selection over
+   the digits it is changing. */
+.ds-number--scrub, .ds-number--scrub .ds-number__input { user-select:none; }
+
+/* ---- ds-slider (range; flat track + square thumb) --------------------------------------------- */
+.ds-slider { -webkit-appearance:none; appearance:none; width:100%; height:6px; margin:8px 0;
+  background:var(--stage-700); border:1px solid var(--hairline); border-radius:0; outline:none; }
+.ds-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:12px; height:16px;
+  background:var(--vim-cyan); border:1px solid var(--vim-cyan-700); border-radius:0; cursor:pointer; }
+.ds-slider:focus::-webkit-slider-thumb { border-color:var(--vim-cyan-300); }
+
+/* ---- Keyboard focus + disabled — uniform across every interactive atom. :focus-visible only
+   (pointer clicks never draw a ring); disabled is always opacity .4 + pointer-events none. ------- */
+.ds-btn:focus-visible, .ds-check:focus-visible, .ds-seg:focus-visible, .ds-tab:focus-visible,
+.ds-select:focus-visible, .ds-menu__item:focus-visible, .ds-tree__item:focus-visible,
+.ds-colorpick:focus-visible,
+.ds-colorarea:focus-visible, .ds-colorstrip:focus-visible,
+.ds-collapse__head:focus-visible,
+.ds-filterbar__add:focus-visible, .ds-fchip__x:focus-visible, .ds-thumbcard__menu:focus-visible,
+.ds-number__btn:focus-visible, .ds-dropzone:focus-visible, .ds-modal__close:focus-visible {
+  outline:1px solid var(--vim-cyan); outline-offset:1px; }
+.ds-select.ds-disabled, .ds-number.ds-disabled, .ds-segmented.ds-disabled { opacity:.4; pointer-events:none; }
+.ds-seg:disabled, .ds-slider:disabled, .ds-tab:disabled { opacity:.4; pointer-events:none; }
+
+/* ---- ds-chart (SVG charts built by JS factories — createBars / createLine / createProportion) --
+   No chart library: flat SVG like ds-gauge. Grid = hairlines, labels = mono eyebrow, series fills =
+   --chart-* tokens, markers are SQUARE (the dot stays the only round primitive; pie wedges are data
+   geometry, allowed like the gauge arc). No animation — charts render in their final state. */
+.ds-chart { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.ds-chart svg { display:block; width:100%; height:auto; }
+.ds-chart__grid { stroke:var(--hairline); }
+.ds-chart__axis { stroke:var(--hairline-soft); }
+.ds-chart__tick { font-family:var(--font-mono); font-size:var(--ds-fs-micro); fill:var(--text-400); letter-spacing:.4px; }
+.ds-chart__val  { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); fill:var(--text-200); }
+.ds-chart__line { fill:none; stroke-width:1.5; }
+/* ---- Cross-highlight contract (BI's signature interaction) -------------------------------------
+   When a selection exists ANYWHERE (chart segment, row, tree node, slicer value), every visual
+   element NOT in the selection gets .ds-xhl-dim; matching elements keep full colour (plus their
+   own selected style where one exists). Table rows dim via text colour, not opacity (sticky-column
+   fills must stay opaque). Clearing the selection removes every dim class — no animation. */
+.ds-xhl-dim { opacity:.35; }
+tr.ds-xhl-dim { opacity:1; }
+tr.ds-xhl-dim td { color:var(--text-500); }
+.ds-legend__item.ds-off { color:var(--text-500); }   /* legend toggle-off; factory swaps swatch to stage-600 */
+
+/* Legend — square swatches (never the round dot). */
+.ds-legend { display:flex; flex-wrap:wrap; gap:12px; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow);
+  letter-spacing:.4px; text-transform:uppercase; color:var(--text-300); }
+.ds-legend__item { display:inline-flex; align-items:center; gap:5px; }
+.ds-legend__swatch { width:8px; height:8px; flex:0 0 auto; }
+/* Proportion bar — the default "share of whole" chart (a pie is the variant, not the default). */
+.ds-propbar { display:flex; height:14px; border:1px solid var(--hairline); background:var(--stage-900); }
+.ds-propbar__seg { height:100%; }
+.ds-propbar__seg + .ds-propbar__seg { border-left:1px solid var(--stage-950); }
+/* ds-donut — centre-headline ring; centre text overlays the SVG hole. */
+.ds-donut { position:relative; flex:0 0 auto; }
+.ds-donut__center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; pointer-events:none; }
+.ds-donut__value { font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:var(--ds-fs-hero);
+  color:var(--text-100); line-height:1; }
+.ds-donut__label { font-size:var(--ds-fs-eyebrow); color:var(--text-400); text-transform:uppercase; letter-spacing:.04em; }
+/* ds-proportion small-multiples — label + shared-scale track per row. */
+.ds-propgroup { display:flex; flex-direction:column; gap:6px; }
+.ds-propgroup__row { display:flex; align-items:center; gap:8px; }
+.ds-propgroup__label { flex:0 0 auto; width:96px; text-align:right; font-size:var(--ds-fs-label); color:var(--text-300);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-propgroup__track { flex:1 1 auto; min-width:0; }
+/* ds-legend (standalone) — vertical swatch list with counts; context rows dim; rows can activate. */
+.ds-legendbox { display:flex; flex-direction:column; gap:2px; }
+.ds-legendbox__row { display:flex; align-items:center; gap:8px; padding:3px 6px; font-size:var(--ds-fs-label); color:var(--text-200); }
+.ds-legendbox__row--context { color:var(--text-400); }
+.ds-legendbox__row--action { cursor:pointer; }
+.ds-legendbox__row--action:hover { background:var(--vim-cyan-tint); }
+.ds-legendbox__row--action:focus-visible { outline:1px solid var(--vim-cyan); outline-offset:-1px; }
+.ds-legendbox__swatch { flex:0 0 auto; width:12px; height:12px; border:1px solid var(--hairline); }
+.ds-legendbox__label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-legendbox__count { margin-left:auto; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+
+/* ---- ds-colorpick (colour picker — trigger + popup: a saturation × brightness plane, hue + alpha
+   strips, a live preview, and the numeric entry — one hex box, or one box per channel) -----------
+   THE GRADIENT EXCEPTION: the DS bans gradients as CHROME. Here a gradient IS the data — the colour
+   space itself, like the gauge arc or a pie wedge — so the plane, the two strips and the
+   translucency checkerboard carry them, and the gallery's envelope check exempts these classes
+   only. The plane's own background is written by JS: the hue lives in the handle's HSV state. */
+.ds-colorpick { display:inline-flex; align-items:center; gap:8px; height:var(--ds-control-h); padding:0 8px;
+  border:1px solid var(--hairline); background:var(--stage-900); cursor:pointer; border-radius:0;
+  font-family:var(--font-mono); font-size:var(--ds-fs-label); color:var(--text-100); }
+.ds-colorpick:hover, .ds-colorpick.ds-open { border-color:var(--vim-cyan); }
+.ds-colorpick__chip { width:14px; height:14px; flex:0 0 auto; border:1px solid var(--hairline-soft); }
+.ds-colorpick__text { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-200); }
+/* The popup rides the MENU layer on document.body — never clipped by a scrolling ancestor, and above
+   a modal backdrop, exactly like ds-select's menu. */
+.ds-colorpop { position:fixed; z-index:var(--z-menu); display:none; width:232px;
+  background:var(--stage-800); border:1px solid var(--hairline); padding:8px; }
+.ds-colorpop.ds-open { display:flex; flex-direction:column; gap:8px; }
+.ds-colorpop__body { display:flex; flex-direction:column; gap:6px; }
+.ds-colorarea { position:relative; height:120px; border:1px solid var(--hairline); cursor:crosshair; }
+.ds-colorstrip { position:relative; height:12px; border:1px solid var(--hairline); cursor:pointer; }
+/* Sixths, exactly — the marker sits at hue × 100%, so a rounded stop would drift from the colour
+   under it. */
+.ds-colorstrip--hue { background:linear-gradient(to right, #FF0000 0%, #FFFF00 16.667%, #00FF00 33.333%,
+  #00FFFF 50%, #0000FF 66.667%, #FF00FF 83.333%, #FF0000 100%); }
+.ds-colorstrip__fill { position:absolute; inset:0; }
+/* A marker rides a colour the USER chose, not a theme surface, so its rings are absolute black and
+   white on purpose — that pair reads over every colour in both themes. Square, like every DS part. */
+.ds-colorarea__marker, .ds-colorstrip__marker { position:absolute; width:9px; height:9px;
+  border:1px solid #000000; outline:1px solid #FFFFFF; pointer-events:none; }
+.ds-colorarea__marker { transform:translate(-50%, -50%); }
+.ds-colorstrip__marker { top:0; height:100%; width:5px; transform:translateX(-50%); }
+/* The checkerboard behind the alpha strip and the preview — what "translucent" looks like. Neutral
+   greys, not tokens: it must read as "nothing behind this" in either theme. */
+.ds-colorstrip--alpha, .ds-colorpop__preview { background-color:#FFFFFF;
+  background-image:linear-gradient(45deg, #C0C0C0 25%, transparent 25%, transparent 75%, #C0C0C0 75%),
+    linear-gradient(45deg, #C0C0C0 25%, transparent 25%, transparent 75%, #C0C0C0 75%);
+  background-size:8px 8px; background-position:0 0, 4px 4px; }
+/* Entry: the preview, then either the hex box or one box per channel with its letter above. The
+   boxes read a step smaller than a form field — four of them share the popup's width. */
+.ds-colorpop__entry { display:flex; align-items:flex-end; gap:6px; }
+.ds-colorpop__preview { position:relative; flex:0 0 auto; width:var(--ds-control-h); height:var(--ds-control-h);
+  border:1px solid var(--hairline-soft); }
+.ds-colorpop__fill { position:absolute; inset:0; }
+.ds-colorpop__inputs { display:flex; align-items:flex-end; gap:4px; flex:1 1 auto; min-width:0; }
+.ds-colorpop__chan { display:flex; flex-direction:column; gap:2px; flex:1 1 0; min-width:0; }
+.ds-colorpop__chanlabel { text-align:center; color:var(--text-400);
+  font-family:var(--font-mono); font-size:var(--ds-fs-micro); letter-spacing:.4px; }
+.ds-colorpop__field { flex:1 1 auto; min-width:0; text-align:center;
+  font-size:var(--ds-fs-small); padding:0 4px; }
+.ds-colorpop__chan .ds-colorpop__field { font-size:var(--ds-fs-micro); padding:0 2px; }
+.ds-colorpop__field.ds-invalid { border-color:var(--bad); color:var(--bad); }
+.ds-colorpop__modes { display:flex; }
+.ds-colorpop__modes .ds-segmented { flex:1 1 auto; }
+.ds-colorpop__modes .ds-seg { flex:1 1 auto; padding:0 4px; font-size:var(--ds-fs-micro); }
+
+
+/* ---- ds-heat (a value cell tinted along a health-triad scale; bg set inline by JS) ------------ */
+.ds-heat { display:inline-flex; align-items:center; justify-content:flex-end; min-width:56px; padding:2px var(--ds-col-inset);
+  border:1px solid var(--hairline); color:var(--text-100);
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:var(--ds-fs-label); }
+
+/* ---- ds-code (read-only code/config block — mono, selectable, horizontal scroll) -------------- */
+.ds-code { padding:10px 12px; background:var(--stage-900); border:1px solid var(--hairline);
+  font-family:var(--font-mono); font-size:var(--ds-fs-small); line-height:1.5; color:var(--text-200);
+  white-space:pre; overflow:auto; }
+
+/* ---- ds-skeleton (static loading placeholder — no shimmer, honours no-animation) -------------- */
+.ds-skeleton { background:var(--stage-700); border-radius:0; }
+.ds-skeleton--text { height:12px; }
+.ds-skeleton--block { height:48px; }
+
+/* ---- ds-gauge (a 180° arc KPI; SVG built by JS) ----------------------------------------------- */
+.ds-gauge { display:inline-flex; flex-direction:column; align-items:center; gap:2px; }
+.ds-gauge__track { stroke:var(--hairline-soft); }
+.ds-gauge__value { stroke:var(--vim-cyan); }
+.ds-gauge__value--good { stroke:var(--good); } .ds-gauge__value--warn { stroke:var(--warn); } .ds-gauge__value--bad { stroke:var(--bad); }
+.ds-gauge__num { font-family:var(--font-mono); font-weight:700; font-size:var(--ds-fs-value); color:var(--text-100); font-variant-numeric:tabular-nums; }
+.ds-gauge__cap { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:1px; text-transform:uppercase; color:var(--text-400); }
+
+/* ============================================================================================
+   ORGANISMS — data grids
+   ============================================================================================ */
+
+/* ---- ds-etable (createTable — plain grid: sortable headers, sticky identity, totals) ---------- */
+.ds-etable-wrap { position:relative; overflow:auto; border:1px solid var(--hairline); }
+.ds-etable { width:100%; border-collapse:separate; border-spacing:0; font-size:var(--ds-fs-label); }
+.ds-etable th { position:sticky; top:0; z-index:1; text-align:left; padding:6px 10px; white-space:nowrap;
+  background:var(--stage-900); border-bottom:1px solid var(--hairline); color:var(--text-300);
+  font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); text-transform:uppercase; letter-spacing:.6px; }
+.ds-etable th.ds-sortable { cursor:pointer; }
+.ds-etable th.ds-sortable:hover { color:var(--text-100); }
+.ds-etable th .ds-sortind { color:var(--vim-cyan); margin-left:4px; }
+.ds-etable td { padding:5px 10px; border-bottom:1px solid var(--hairline); color:var(--text-200); white-space:nowrap; }
+/* row checkbox cell: a textless inline-flex check sits on the text baseline, so the line box keeps
+   the strut's descent below it and the box rides high. line-height:0 collapses the strut, so the
+   line box is exactly the box and the cell's vertical-align:middle centres it, padded or virtual. */
+.ds-etable td.ds-chkcell { line-height:0; }
+.ds-etable td.ds-num, .ds-etable th.ds-num { text-align:right; }
+/* date + note table cells (CellEditor kinds "date" / "note") */
+/* text glyphs (+ / pencil), not icon-font codepoints — the icon font's metrics render them off-centre */
+.ds-notebtn { font-family:var(--font-body); }
+.ds-notebtn.ds-active { color:var(--vim-cyan); }
+/* An empty note's "+" is hover-revealed: calm dense tables, discoverable by sweeping the row.
+   Kept in the a11y tree (opacity, not display) so keyboard focus still reaches it. */
+.ds-notebtn--empty { opacity:0; }
+.ds-etable tr:hover .ds-notebtn--empty, .ds-notebtn--empty:focus-visible { opacity:1; }
+.ds-notepop { padding:8px; width:280px; display:flex; flex-direction:column; gap:6px; }
+.ds-notepop textarea { width:100%; }
+.ds-notepop__done { align-self:flex-end; }
+/* ds-datepicker — the calendar (ported from the desktop DatePicker). Own panel chrome: it is
+   NOT a ds-menu, so no menu max-height/scroll applies — the calendar always shows whole. */
+.ds-datepicker { padding:10px; width:fit-content; display:flex; flex-direction:column; gap:6px;
+  background:var(--stage-800); border:1px solid var(--hairline); }
+.ds-datepicker--pop { position:fixed; z-index:var(--z-menu); }
+.ds-dp__eyebrow { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:1px; color:var(--text-400); }
+.ds-dp__big { font-size:var(--ds-fs-h2); color:var(--text-100); min-height:22px; }
+.ds-dp__nav { display:flex; align-items:center; gap:2px; }
+.ds-dp__month { margin-right:auto; }
+.ds-dp__arrow { font-size:14px; }
+.ds-dp__body { min-height:196px; }
+.ds-dp__grid { display:grid; grid-template-columns:repeat(7, 30px); gap:1px; }
+.ds-dp__dow { text-align:center; color:var(--text-400); font-size:var(--ds-fs-micro); line-height:24px; }
+.ds-dp__blank { height:28px; }
+.ds-dp__day, .ds-dp__year { border:1px solid transparent; background:transparent; color:var(--text-100);
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  font-size:var(--ds-fs-label); height:28px; cursor:pointer; }
+.ds-dp__day:hover, .ds-dp__year:hover { background:var(--vim-cyan-tint); }
+.ds-dp__day.ds-active, .ds-dp__year.ds-active { background:var(--vim-cyan-tint); border-color:var(--vim-cyan); color:var(--vim-cyan); }
+.ds-dp__day--today { border-color:var(--hairline); }
+.ds-dp__years { display:grid; grid-template-columns:repeat(4, 1fr); gap:2px; max-height:200px; overflow-y:auto; width:216px; }
+.ds-dp__foot { display:flex; align-items:center; gap:6px; }
+.ds-dp__spring { flex:1 1 auto; }
+.ds-dp-open { margin-left:2px; }
+/* ds-date-field — typed ISO input + the calendar button (the customary date control) */
+.ds-datefield { display:inline-flex; align-items:center; gap:2px; }
+.ds-datefield__input { width:92px; }
+.ds-datefield__input.ds-invalid { border-color:var(--bad); color:var(--bad); }
+.ds-datefield--cell .ds-datefield__input { height:20px; font-size:var(--ds-fs-label); }
+.ds-etable td.ds-num { font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--text-100); }
+/* Sticky identity first column. */
+.ds-etable .ds-idcol { position:sticky; left:0; z-index:1; background:var(--stage-950); }
+.ds-etable thead .ds-idcol { z-index:3; background:var(--stage-900); }
+.ds-etable tbody tr:hover td { background:var(--vim-cyan-tint); }
+.ds-etable tbody tr.ds-erow:focus-visible { outline:1px solid var(--vim-cyan); outline-offset:-1px; }
+/* Row selection (the ds-sel contract, same as ds-list / ds-tree). */
+.ds-etable tr.ds-sel td { background:var(--vim-cyan-tint); }
+.ds-etable tr.ds-sel .ds-idcol { background:var(--stage-800); box-shadow:inset 2px 0 0 var(--vim-cyan); }
+/* Row tone — a left keyline in the existing tone vocabulary (inset = envelope-legal, not elevation). */
+.ds-etable tbody tr.ds-tone--cyan   > td:first-child { box-shadow:inset 3px 0 0 var(--vim-cyan); }
+.ds-etable tbody tr.ds-tone--teal   > td:first-child { box-shadow:inset 3px 0 0 var(--vim-teal); }
+.ds-etable tbody tr.ds-tone--good   > td:first-child { box-shadow:inset 3px 0 0 var(--good); }
+.ds-etable tbody tr.ds-tone--warn   > td:first-child { box-shadow:inset 3px 0 0 var(--warn); }
+.ds-etable tbody tr.ds-tone--bad    > td:first-child { box-shadow:inset 3px 0 0 var(--bad); }
+.ds-etable tbody tr.ds-tone--violet > td:first-child { box-shadow:inset 3px 0 0 var(--vim-violet); }
+/* Column value filter — the funnel in the header, and its popover. The popover mounts to body (like
+   ds-menu) so a scrolling table cannot clip it; opaque fill because in OSR a transparent pixel is a
+   hole through to the 3D scene. */
+.ds-thfilter { display:inline-flex; align-items:center; margin-left:5px; padding:3px; cursor:pointer;
+  vertical-align:middle; }
+/* A FUNNEL, not a triangle: the sort indicator is already a triangle, and two identical marks in one
+   header claim two controls are one. Wide mouth, narrow stem — clip-path, since a border trick can
+   only make triangles. */
+.ds-thfilter__mark { width:9px; height:9px; background:var(--text-400);
+  clip-path:polygon(0% 0%, 100% 0%, 62% 45%, 62% 100%, 38% 100%, 38% 45%); }
+.ds-thfilter:hover .ds-thfilter__mark { background:var(--vim-cyan); }
+.ds-thfilter.ds-on .ds-thfilter__mark { background:var(--vim-cyan); }
+.ds-filterpop { position:fixed; z-index:var(--z-menu); min-width:180px; max-width:280px; padding:4px;
+  background:var(--stage-800); border:1px solid var(--hairline); border-radius:0; box-shadow:none; }
+.ds-filterpop__head { padding:2px 4px 6px; border-bottom:1px solid var(--hairline); margin-bottom:4px; }
+.ds-filterpop__list { max-height:260px; overflow:auto; }
+.ds-filterpop__row { padding:2px 4px; }
+/* All/none control in a header cell — a checkbox sharing the cell with the column label, so it needs
+   the label's baseline and a gap, not a column of its own. */
+.ds-th-allnone { display:inline-flex; vertical-align:middle; margin-right:6px; }
+/* Row tint — a translucent WASH of a whole row (rowTone's keyline says "this row is tagged"; a
+   tint says "this row is different"). One vocabulary, two surfaces: a table row and a ds-tree row
+   both wear these modifiers, so each modifier only names its token and each surface applies the
+   wash itself (plus one more rule for the table's sticky identity column — it carries its own
+   opaque background for the horizontal scroll, so the tint has to be mixed INTO that rather than
+   laid over it).
+   Selection and hover paint later — the table over its CELLS (tr.ds-sel td), the tree over its row
+   — which is the intended precedence: what you picked beats what the row is. */
+.ds-rowtint--cyan   { --ds-rowtint:var(--vim-cyan); }
+.ds-rowtint--teal   { --ds-rowtint:var(--vim-teal); }
+.ds-rowtint--good   { --ds-rowtint:var(--good); }
+.ds-rowtint--warn   { --ds-rowtint:var(--warn); --ds-rowtint-a:14%; }
+.ds-rowtint--orange { --ds-rowtint:var(--vim-orange); --ds-rowtint-a:14%; }
+.ds-rowtint--bad    { --ds-rowtint:var(--bad); --ds-rowtint-a:16%; }
+.ds-rowtint--violet { --ds-rowtint:var(--vim-violet); --ds-rowtint-a:14%; }
+/* Muted — the row is DONE (closed, gone, ignored). It recedes rather than colours: the faintest grey
+   plus dimmed text, so a table with its finished rows sorted in among the live ones still reads
+   front-to-back. */
+.ds-rowtint--muted  { --ds-rowtint:var(--text-400); --ds-rowtint-a:7%; }
+.ds-etable tbody tr.ds-rowtint--muted > td { color:var(--text-400); }
+.ds-etable tbody tr.ds-rowtint { background:color-mix(in srgb,var(--ds-rowtint) var(--ds-rowtint-a,12%),transparent); }
+.ds-etable tbody tr.ds-rowtint > .ds-idcol { background:color-mix(in srgb,var(--ds-rowtint) var(--ds-rowtint-a,12%),var(--stage-950)); }
+/* Mixed-value mark — italic, dim, sits left of a right-aligned number so a roll-up can't lie. */
+.ds-mixed { font-style:italic; color:var(--text-400); font-size:var(--ds-fs-eyebrow); margin-right:6px; }
+/* Shared empty-state cell for the collection components (table/list/tree). */
+.ds-empty-cell { padding:16px; text-align:center; color:var(--text-400); font-size:var(--ds-fs-label); }
+/* Drag-to-reorder marks (used by reorderable()). Inset keyline = envelope-legal. */
+.ds-dragging { opacity:.5; }
+.ds-drop { box-shadow:inset 0 2px 0 var(--vim-cyan); }
+/* ds-rule-list — ordered first-match rows (model is the consumer's); flat, hairline-separated. */
+.ds-rulelist { display:flex; flex-direction:column; border:1px solid var(--hairline); }
+.ds-rule__grip { flex:0 0 auto; width:14px; text-align:center; color:var(--text-400); cursor:grab; user-select:none; }
+.ds-rule__gripspace { flex:0 0 auto; width:14px; }
+.ds-rule { display:flex; align-items:center; gap:8px; padding:4px 8px; border-bottom:1px solid var(--hairline);
+  font-size:var(--ds-fs-label); color:var(--text-100); }
+.ds-rule:last-child { border-bottom:0; }
+.ds-rule--tail { background:var(--stage-800); color:var(--text-300); }
+.ds-rule--off { color:var(--text-400); }
+.ds-rule__enable { flex:0 0 auto; width:18px; display:inline-flex; }
+.ds-rule__body { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-rule__count { flex:0 0 auto; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+.ds-rule__count--none { font-style:italic; }
+.ds-rule__ctl { flex:0 0 auto; display:inline-flex; gap:2px; }
+.ds-rule__btn { width:18px; height:18px; padding:0; border:0; background:transparent; color:var(--text-400);
+  cursor:pointer; line-height:1; border-radius:0; }
+.ds-rule__btn:hover { color:var(--text-100); }
+/* ds-ranked-bar — count + expandable worst-first triage list. */
+.ds-rankbar { border:1px solid var(--hairline); }
+.ds-rankbar__head { display:flex; align-items:center; gap:8px; padding:5px 8px; cursor:pointer; background:var(--stage-900); }
+.ds-rankbar__caret { flex:0 0 auto; color:var(--text-400); font-size:var(--ds-fs-eyebrow); }
+.ds-rankbar__title { flex:1 1 auto; font-size:var(--ds-fs-label); color:var(--text-200); }
+.ds-rankbar__total { flex:0 0 auto; font-family:var(--font-mono); font-size:var(--ds-fs-label); color:var(--text-100); }
+.ds-rankbar__list { display:flex; flex-direction:column; border-top:1px solid var(--hairline); }
+.ds-rankbar__row { display:flex; align-items:center; gap:8px; padding:4px 8px; font-size:var(--ds-fs-label); color:var(--text-200); }
+.ds-rankbar__row--action { cursor:pointer; }
+.ds-rankbar__row--action:hover { background:var(--vim-cyan-tint); }
+.ds-rankbar__row--action:focus-visible { outline:1px solid var(--vim-cyan); outline-offset:-1px; }
+.ds-rankbar__label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-rankbar__count { flex:0 0 auto; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+/* Column bands — a collapsible super-header + the collapsed representative strip. */
+.ds-etable .ds-bandrow th { position:sticky; top:0; z-index:2; background:var(--stage-800); text-align:left;
+  padding:4px 10px; border-bottom:1px solid var(--hairline); color:var(--text-200);
+  font-size:var(--ds-fs-eyebrow); text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+.ds-etable .ds-band { border-left:1px solid var(--hairline); }
+.ds-band__caret { color:var(--text-400); }
+.ds-etable td.ds-band-cell, .ds-etable th.ds-band-head { background:var(--stage-900); border-left:1px solid var(--hairline); }
+.ds-band.ds-tone--cyan,   .ds-band-cell.ds-tone--cyan,   .ds-band-head.ds-tone--cyan   { box-shadow:inset 3px 0 0 var(--vim-cyan); }
+.ds-band.ds-tone--teal,   .ds-band-cell.ds-tone--teal,   .ds-band-head.ds-tone--teal   { box-shadow:inset 3px 0 0 var(--vim-teal); }
+.ds-band.ds-tone--good,   .ds-band-cell.ds-tone--good,   .ds-band-head.ds-tone--good   { box-shadow:inset 3px 0 0 var(--good); }
+.ds-band.ds-tone--warn,   .ds-band-cell.ds-tone--warn,   .ds-band-head.ds-tone--warn   { box-shadow:inset 3px 0 0 var(--warn); }
+.ds-band.ds-tone--bad,    .ds-band-cell.ds-tone--bad,    .ds-band-head.ds-tone--bad    { box-shadow:inset 3px 0 0 var(--bad); }
+.ds-band.ds-tone--violet, .ds-band-cell.ds-tone--violet, .ds-band-head.ds-tone--violet { box-shadow:inset 3px 0 0 var(--vim-violet); }
+/* ---- ds-pivot (createPivot — matrix on ds-etable: grouped columns × expandable rows) ----------
+   Column groups = a spanning first header row; each group's first column carries a left hairline.
+   Row heads reuse the tree caret + --depth indent; subtotal rows read as in-table group bands. */
+.ds-etable th.ds-grpcol { text-align:center; border-left:1px solid var(--hairline); color:var(--text-200); }
+.ds-etable th.ds-grpstart, .ds-etable td.ds-grpstart { border-left:1px solid var(--hairline); }
+.ds-etable .ds-rowhd { display:flex; align-items:center; gap:6px; padding-left:calc(var(--depth,0) * 16px); }
+.ds-etable tr.ds-subtotal td { background:var(--stage-800); color:var(--text-100); font-weight:600; }
+.ds-etable tr.ds-subtotal .ds-idcol { background:var(--stage-800); }
+/* ---- column resize (ds-colgrip) — .ds-split__handle's idiom for a cell that can't be a flex item.
+   THE RULE THE USER SEES AND THE RULE THEY CAN GRAB ARE ONE ELEMENT. The grip paints its own
+   hairline (::before) centred in a 13px zone, so the zone always straddles the visible line — a zone
+   measured from the cell edge while a NEIGHBOUR painted the line drifted 3px apart in the CEF
+   Estimation grid and read as "horizontal resizing does not work at all". Rules stay invisible at
+   rest (this grid has no vertical rules by design); entering the header reveals every boundary
+   faintly so they are discoverable as a set, and the one under the cursor goes cyan. Painted, not
+   tooltipped: native title is dead in CEF OSR. */
+/* max-content + min-width, not the base width:100%: a fixed-layout grid whose declared widths sum
+   past the wrap must OVERFLOW it (the wrap scrolls), not squeeze every column to fit — while one
+   narrower than the wrap still stretches to it (the undeclared columns take the slack). */
+.ds-etable--fixed { table-layout:fixed; width:max-content; min-width:100%; }
+/* Pinned: every column definite, the table width their sum (set inline by pinLayout) — the state
+   where fixed layout actually bites, so a drag can take a column BELOW its content. Clipped cells
+   ellipsize; the page tooltip binder shows their full text on hover. The th needs no rule: header
+   overflow is already covered by the next sticky cell's opaque background, and clipping the th
+   would clip the resize grips it hosts. */
+.ds-etable--pinned td { overflow:hidden; text-overflow:ellipsis; }
+/* Structural cells keep painting whole: a group head's label spans its row of empty cells, and a
+   checkbox cell holds a box, not text — clipping either turns chrome into ellipsis dots. */
+.ds-etable--pinned .ds-grouphead td, .ds-etable--pinned td.ds-chkcell { overflow:visible; text-overflow:clip; }
+.ds-colgrip { position:absolute; top:0; bottom:0; width:13px; z-index:2; cursor:col-resize; }
+.ds-colgrip--right { right:-6px; }
+.ds-colgrip--left { left:-6px; }
+.ds-colgrip::before { content:""; position:absolute; top:0; bottom:0; left:6px; width:1px; background:transparent; }
+.ds-etable--fixed thead:hover .ds-colgrip::before { background:var(--hairline-soft); }
+/* Same reveal for a .ds-cols header strip (the virtualized tree's resizable columns): entering the
+   strip shows every boundary faintly, so they are discoverable as a set. */
+.ds-cols:hover .ds-colgrip::before { background:var(--hairline-soft); }
+.ds-colgrip:hover, .ds-colgrip.ds-active { background:var(--vim-cyan-tint); }
+.ds-colgrip:hover::before, .ds-colgrip.ds-active::before { background:var(--vim-cyan); }
+/* Focusable (role=separator): ←/→ resize, Shift for bigger bites, Home resets. */
+.ds-colgrip:focus-visible { background:var(--vim-cyan-tint); outline:1px solid var(--vim-cyan); outline-offset:-1px; }
+.ds-colgrip:focus-visible::before { background:var(--vim-cyan); }
+/* ---- height resize (ds-rowgrip) — the colgrip turned sideways: a grab bar under a height-capped
+   table that drags its rows viewport taller or shorter. Same law: the line the user sees and the
+   zone they grab are one element. Faintly visible at rest (unlike the colgrips, there is no hover
+   surface like a header to reveal it as a set — the bar must announce itself). */
+.ds-rowgrip-host { position:relative; flex:0 0 9px; height:9px; }
+.ds-rowgrip { position:absolute; left:0; right:0; top:0; bottom:0; z-index:2; cursor:row-resize; }
+.ds-rowgrip::before { content:""; position:absolute; left:0; right:0; top:4px; height:1px; background:var(--hairline-soft); }
+.ds-rowgrip:hover, .ds-rowgrip.ds-active { background:var(--vim-cyan-tint); }
+.ds-rowgrip:hover::before, .ds-rowgrip.ds-active::before { background:var(--vim-cyan); }
+.ds-rowgrip:focus-visible { background:var(--vim-cyan-tint); outline:1px solid var(--vim-cyan); outline-offset:-1px; }
+.ds-rowgrip:focus-visible::before { background:var(--vim-cyan); }
+/* fill: the wrap becomes the flex-filling scroller of its (flex-column) host — the table takes
+   whatever height the layout around it frees up, the way a virtualizing tree does. */
+.ds-etable-wrap--fill { flex:1 1 auto; min-height:0; max-height:none; }
+/* virtual (createTable `virtual`): every body row is exactly --ds-vrow-h tall so the spacer rows' arithmetic
+   holds — cells clip instead of wrapping; the spacers themselves are bare, untinted height. */
+.ds-etable--virtual tbody tr.ds-erow > td { height:var(--ds-vrow-h); box-sizing:border-box; padding-top:0; padding-bottom:0; overflow:hidden; }
+.ds-etable--virtual tbody tr.ds-etable__vpad > td, .ds-etable--virtual tbody tr.ds-etable__vpad:hover > td { padding:0; border:0; background:transparent; }
+/* Totals footer. */
+.ds-etable tfoot td { position:sticky; bottom:0; z-index:1; background:var(--stage-900);
+  border-top:1px solid var(--hairline-soft); color:var(--text-100); font-weight:600; }
+.ds-etable tfoot .ds-idcol { z-index:2; }
+
+/* ============================================================================================
+   MOLECULES — built from atoms
+   ============================================================================================ */
+
+/* ---- ds-stat (KPI cell): eyebrow label + big mono value (+ optional unit + delta chip) -------- */
+.ds-stat { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.ds-stat__value-row { display:flex; align-items:baseline; gap:8px; }
+.ds-stat__value { font-family:var(--font-mono); font-size:var(--ds-fs-hero); font-weight:700;
+  font-variant-numeric:tabular-nums; color:var(--text-100); line-height:1.05; }
+.ds-stat__unit { font-family:var(--font-mono); font-size:var(--ds-fs-label); color:var(--text-300); }
+
+/* ---- ds-grouphead (createTable groups: a group's head row — caret, label, count, head editors) - */
+.ds-grouphead > td { background:var(--stage-800); border-top:1px solid var(--hairline); padding:3px 10px;
+  cursor:pointer; white-space:nowrap; }
+.ds-ghead__caret { background:none; border:none; color:var(--text-300); cursor:pointer; padding:0 6px 0 0;
+  font-size:var(--ds-fs-label); line-height:1; }
+.ds-ghead__caret:hover { color:var(--vim-cyan); }
+.ds-ghead__label { color:var(--text-100); font-weight:600; margin-right:8px; }
+.ds-ghead__count { color:var(--text-400); font-family:var(--font-mono); font-size:var(--ds-fs-label); }
+
+/* Row drag & drop: the ghost that follows the cursor, and the head/row under it. */
+.ds-dragghost { position:fixed; z-index:var(--z-tooltip); pointer-events:none; padding:3px 10px;
+  background:var(--stage-700); border:1px solid var(--vim-cyan); color:var(--text-100);
+  font-size:var(--ds-fs-label); }
+.ds-etable tr.ds-droptarget > td { background:var(--vim-cyan-tint); }
+
+/* ---- ds-grpband (group band: label + count + Σ subtotals — works as a table row or a div) ----- */
+.ds-grpband > td, div.ds-grpband { background:var(--stage-800); color:var(--text-300); cursor:pointer;
+  font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); text-transform:uppercase; letter-spacing:.6px; }
+div.ds-grpband { display:flex; align-items:center; gap:8px; padding:5px 10px; border:1px solid var(--hairline); }
+.ds-grp-sub { color:var(--text-100); }
+
+/* ---- ds-editcell (edit-in-place value — .ds-input--inline atom + amber pending contract) ------ */
+/* A pending (unsaved) edit reads amber and is never silently committed: Enter/blur → onEdit; Esc reverts. */
+.ds-pending, .ds-pending .ds-input--inline { color:var(--warn); }
+.ds-pending .ds-input--inline { border-bottom-color:var(--warn); }
+.ds-invalid, .ds-invalid .ds-input--inline { color:var(--bad); }
+.ds-invalid .ds-input--inline { border-bottom-color:var(--bad); }
+
+/* ---- ds-filterbar / ds-fchip (applied filters as removable chips — THE BI primitive) ----------
+   A filter chip is cyan-tinted (it narrows the selection — same meaning as selected), reads
+   KEY = value in mono, removes with ×. "Add filter" opens a ds-menu of fields. */
+.ds-filterbar { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.ds-fchip { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 3px 0 8px;
+  border:1px solid var(--vim-cyan-700); background:var(--vim-cyan-tint); color:var(--text-100);
+  font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:.4px; white-space:nowrap; }
+.ds-fchip__key { color:var(--text-300); text-transform:uppercase; }
+.ds-fchip__x { display:flex; align-items:center; justify-content:center; width:16px; height:16px; padding:0;
+  border:0; background:transparent; color:var(--text-300); cursor:pointer; font-size:var(--ds-fs-label); line-height:1; border-radius:0; }
+.ds-fchip__x:hover { color:var(--text-100); }
+.ds-filterbar__add { height:22px; padding:0 8px; border:1px dashed var(--hairline-soft); background:transparent;
+  color:var(--text-300); cursor:pointer; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow);
+  letter-spacing:.4px; text-transform:uppercase; border-radius:0; }
+.ds-filterbar__add:hover { color:var(--text-100); border-color:var(--text-300); }
+
+/* ---- ds-slicer (categorical filter: search + select-all + checkbox value list + counts) --------
+   Pure composition: ds-search + tri-state ds-check (select-all) + ds-check rows + mono counts.
+   The count column shows rows matching each value under the CURRENT other filters. */
+.ds-slicer { display:flex; flex-direction:column; border:1px solid var(--hairline); background:var(--stage-900); }
+.ds-slicer__title { padding:6px 8px 0; font-size:var(--ds-fs-eyebrow); letter-spacing:.04em;
+  text-transform:uppercase; color:var(--text-300); flex:0 0 auto; }
+.ds-slicer__head { padding:6px; border-bottom:1px solid var(--hairline); flex:0 0 auto; }
+.ds-slicer__all { display:flex; align-items:center; padding:5px 10px; border-bottom:1px solid var(--hairline); flex:0 0 auto; }
+.ds-slicer__list { display:flex; flex-direction:column; overflow-y:auto; max-height:200px; }
+.ds-slicer__item { display:flex; align-items:center; gap:8px; padding:4px 10px; cursor:pointer; }
+.ds-slicer__item:hover { background:var(--vim-cyan-tint); }
+.ds-slicer__count { margin-left:auto; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+
+/* ---- ds-pathfield (file/folder picker row — path display + Browse / Explorer / Reset) ----------
+   The reusable "pick a file" unit (New Project, exports, linked models…). Path display is a
+   read-only mono ds-input (placeholder when unset); actions are ds-iconbtns: Browse = … (opens the
+   native dialog), folder glyph = reveal in explorer, × = reset to default / clear. Wrap in a
+   ds-formfield for the label + help/error row. */
+.ds-pathfield { display:flex; align-items:center; gap:6px; min-width:0; }
+.ds-pathfield .ds-input { flex:1 1 auto; min-width:0; font-family:var(--font-mono);
+  font-variant-numeric:tabular-nums; color:var(--text-200); }
+
+/* ---- ds-setting (settings row: label + control + reset-to-default + help) ---------------------
+   The unit of every Settings tab. The reset eraser is enabled ONLY when the value differs from its
+   default, and that live button is the whole "changed" signal — the row carries no other mark. Help
+   text is part of the row — settings are documented where they live, not in tooltips. */
+.ds-setting { display:grid; grid-template-columns:170px minmax(140px, 240px) min-content; gap:3px 10px; align-items:center; }
+.ds-setting__label { display:flex; align-items:center; font-size:var(--ds-fs-label); color:var(--text-200); }
+.ds-setting__help { grid-column:1 / -1; font-size:var(--ds-fs-small); line-height:1.45; color:var(--text-400); max-width:70ch; }
+
+/* ---- ds-collapse (collapsible section: caret band header + body) -------------------------------
+   The header is a full-width flat band (reuses the tree caret; open = rotated down). --accent
+   marks the section that owns the current action (cyan tint + keyline). State is a class flip —
+   no animation, the body just appears. Stack several for an accordion. */
+.ds-collapse__head { display:flex; align-items:center; gap:8px; width:100%; padding:6px 10px; border:0;
+  background:var(--stage-700); color:var(--text-100); cursor:pointer; text-align:left; border-radius:0;
+  font-family:var(--font-body); font-size:var(--ds-fs-label); font-weight:600; }
+.ds-collapse__head:hover { background:var(--stage-600); }
+.ds-collapse__head .ds-tree__caret { transform:rotate(90deg); border-left-color:var(--text-200); }
+.ds-collapse.ds-closed .ds-collapse__head .ds-tree__caret { transform:none; }
+.ds-collapse--accent .ds-collapse__head { background:var(--vim-cyan-tint); box-shadow:inset 2px 0 0 var(--vim-cyan); }
+.ds-collapse__body { padding:10px 2px; display:flex; flex-direction:column; gap:10px; }
+.ds-collapse.ds-closed .ds-collapse__body { display:none; }
+/* resizable: the section holds the height the user dragged it to (its body scrolls inside), so it
+   works as the bottom pane of a splitter. Collapsed, the dragged height must NOT apply — a closed
+   section is its header, full stop — hence the !important against the inline height. */
+/* Resting cap at half the pane: a content-heavy section must not starve what sits above it by
+   default (the body scrolls instead). An explicit dragged height lifts the cap (inline max-height). */
+.ds-collapse--resizable { display:flex; flex-direction:column; flex:0 0 auto; max-height:50%; }
+.ds-collapse--resizable .ds-collapse__body { flex:1 1 auto; min-height:0; overflow:auto; }
+.ds-collapse--resizable.ds-closed { height:auto !important; }
+.ds-collapse--resizable.ds-closed .ds-rowgrip-host { display:none; }
+
+/* ---- ds-panes (a row of panes: head band + body each; a parked pane narrows to a strip) ---------
+   The column sibling of ds-collapse. Each pane's share of the row is its flex weight (--ds-pane-w,
+   equal to start; a seam drag writes px widths as weights). The seam is a ds-colgrip on the left
+   pane's right edge, so the line and the zone that grabs it are one element. PARKED, a pane is a
+   34px strip in place: its lead slot and its title (vertical) stay, everything else goes, and a click
+   on the strip brings it back. */
+.ds-panes { display:flex; flex:1 1 auto; min-height:0; background:var(--stage-900); }
+.ds-pane { flex:var(--ds-pane-w, 1) 1 0; min-width:0; display:flex; flex-direction:column; position:relative; }
+.ds-pane + .ds-pane { border-left:1px solid var(--hairline); }
+.ds-pane__head { display:flex; align-items:center; gap:var(--ds-space-2); padding:var(--ds-space-2) var(--ds-space-3); }
+.ds-pane__lead, .ds-pane__meta { display:inline-flex; align-items:center; gap:var(--ds-space-2); flex:0 0 auto; }
+.ds-pane__lead:empty, .ds-pane__meta:empty { display:none; }
+.ds-pane__tools { margin-left:auto; display:flex; align-items:center; gap:4px; }
+.ds-pane__body { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+/* The pane seams already draw the vertical rules; a ds-tree framed on all four sides inside a pane
+   would add a second one a pixel away, which reads as one fat rule. */
+.ds-pane__body .ds-tree, .ds-pane__body .ds-cols { border-left:0; border-right:0; }
+/* The head as a gesture (onHeadClick): the pointer and a faint tint invite the click; a head whose
+   gesture's result stands wears the selection look (the ds-sel contract: tint + a 2px left edge). */
+.ds-pane--action:not(.ds-pane--parked) > .ds-pane__head:not(.ds-pane__head--idle) { cursor:pointer; }
+.ds-pane--action:not(.ds-pane--parked) > .ds-pane__head:not(.ds-pane__head--idle):hover { background:color-mix(in srgb, var(--vim-cyan) 6%, transparent); }
+.ds-pane__head.ds-sel { background:var(--vim-cyan-tint); box-shadow:inset 2px 0 0 var(--vim-cyan); }
+.ds-pane--parked { flex:0 0 auto; width:34px; cursor:pointer; }
+.ds-pane--parked:hover { background:var(--vim-cyan-tint); }
+.ds-pane--parked > .ds-pane__head { flex-direction:column; align-items:center; height:100%; padding:var(--ds-space-3) 0; gap:var(--ds-space-3); }
+.ds-pane--parked > .ds-pane__head > .ds-pane__lead { flex-direction:column; }
+/* Vertical text sits a pixel right of its box's centre; the lead's controls above it (a 14px check,
+   a half pixel off the 34px strip's centre) are the line it has to share. */
+.ds-pane--parked .ds-pane__title { writing-mode:vertical-rl; position:relative; left:-1px; }
+.ds-pane--parked .ds-pane__park, .ds-pane--parked .ds-pane__meta, .ds-pane--parked .ds-pane__tools { display:none; }
+/* !important: a widget mounted into the body may set its own display INLINE (the element tree does),
+   and a parked body must not go on rendering at 34px wide over its neighbours. */
+.ds-pane--parked > .ds-pane__body { display:none !important; }
+/* A seam beside a strip moves nothing: the strip keeps its 34px. */
+.ds-pane--parked > .ds-colgrip, .ds-pane:has(+ .ds-pane--parked) > .ds-colgrip { display:none; }
+
+/* ---- ds-banner (persistent inline message — in-flow, unlike the transient toast) ---------------
+   Same left-keyline language as ds-toast. For page-level guidance, warnings, and errors that must
+   stay until resolved or dismissed. Optional action button + close. */
+.ds-banner { display:flex; align-items:center; gap:10px; padding:9px 12px;
+  background:var(--stage-800); border:1px solid var(--hairline); border-left:2px solid var(--vim-cyan);
+  color:var(--text-200); font-size:var(--ds-fs-label); line-height:1.45; }
+/* with a control aboard (an action, a close) the padding tightens so the banner stays about the height
+   a text-only one has; the controls are the standard sizes (ds-btn, a 22px close) */
+.ds-banner:has(.ds-btn, .ds-banner__close) { padding:6px 8px 6px 12px; }
+.ds-banner--good { border-left-color:var(--good); }
+.ds-banner--warn { border-left-color:var(--warn); }
+.ds-banner--bad  { border-left-color:var(--bad); }
+.ds-banner__msg { flex:1 1 auto; }
+.ds-banner__msg b { color:var(--text-100); }
+.ds-banner__close { flex:0 0 auto; width:var(--ds-control-h-sm); height:var(--ds-control-h-sm); padding:0; border:0;
+  background:transparent; color:var(--text-400); cursor:pointer; font-size:18px; line-height:1; border-radius:0; }
+.ds-banner__close:hover { color:var(--text-100); }
+
+/* ---- ds-match-bar (live filter readout: "N of M match" + id pill + SQL peek + actions) --------
+   Presentation only — the consumer owns counts/SQL. Zero state paints the number bad-red. The SQL
+   peek is a flat mono block (no toggle chrome: pass sql to show, omit to hide). */
+.ds-match-bar { display:flex; flex-direction:column; gap:6px; padding:6px 12px;
+  background:var(--stage-950); border-bottom:1px solid var(--hairline);
+  font-size:var(--ds-fs-label); color:var(--text-400); }
+.ds-match-bar [hidden] { display:none; }
+.ds-match-bar__row { display:flex; align-items:center; gap:8px; }
+.ds-match-bar__count { font-family:var(--font-mono); font-weight:700; font-variant-numeric:tabular-nums;
+  color:var(--vim-cyan); }
+.ds-match-bar__count--zero { color:var(--bad); }
+.ds-match-bar__label { color:var(--text-300); font-size:var(--ds-fs-label); }
+.ds-match-bar__idpill { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:.4px;
+  color:var(--vim-cyan); background:var(--vim-cyan-tint); padding:1px 6px; }
+.ds-match-bar__spacer { flex:1 1 auto; }
+.ds-match-bar__actions { display:flex; gap:4px; flex:0 0 auto; }
+.ds-match-bar__actions .ds-btn { height:20px; font-size:var(--ds-fs-eyebrow); }
+.ds-match-bar__sql { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); line-height:1.55;
+  color:var(--vim-cyan); background:var(--stage-900); border:1px solid var(--hairline-soft);
+  padding:6px 8px; white-space:pre; overflow-x:auto; }
+
+/* ---- ds-task (long-running job row: label + ds-bar + mono % + cancel) --------------------------
+   Stack rows for a jobs list. Indeterminate: a flat cyan block sweeps the bar and the % slot reads
+   "working…", so a wait of unknown length never looks like a frozen app. It is the DS's one
+   sanctioned animation; under prefers-reduced-motion the fill stands still, full-width stage-600. */
+.ds-task { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.ds-task__head { display:flex; align-items:center; gap:8px; }
+.ds-task__label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:var(--ds-fs-label); color:var(--text-200); }
+.ds-task__pct { flex:0 0 auto; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow);
+  font-variant-numeric:tabular-nums; color:var(--text-300); }
+.ds-task .ds-iconbtn { width:18px; height:18px; font-size:var(--ds-fs-micro); }
+.ds-task--busy .ds-bar__fill { width:40%; background:var(--vim-cyan); animation:ds-task-sweep 2.4s linear infinite; }
+@keyframes ds-task-sweep { from { transform:translateX(-100%); } to { transform:translateX(250%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ds-task--busy .ds-bar__fill { width:100%; background:var(--stage-600); animation:none; }
+}
+.ds-task--bad .ds-task__pct { color:var(--bad); }
+
+/* ---- ds-steps (wizard header — flat mono step indicator) --------------------------------------
+   done = good-tinted num · active = cyan · upcoming = dim. Separator is a hairline, not an arrow. */
+.ds-steps { display:flex; align-items:center; gap:8px; }
+.ds-step { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono);
+  font-size:var(--ds-fs-eyebrow); letter-spacing:.6px; text-transform:uppercase; color:var(--text-400); }
+.ds-step__num { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+  border:1px solid var(--hairline); background:var(--stage-800); font-size:var(--ds-fs-micro); }
+.ds-step.ds-active { color:var(--text-100); }
+.ds-step.ds-active .ds-step__num { border-color:var(--vim-cyan); background:var(--vim-cyan-tint); color:var(--vim-cyan); }
+.ds-step.ds-done { color:var(--text-300); }
+.ds-step.ds-done .ds-step__num { border-color:var(--good); color:var(--good); }
+.ds-step.ds-blocked { color:var(--text-400); }
+.ds-step.ds-blocked .ds-step__num { border-color:var(--bad); color:var(--bad); }
+.ds-step__body { display:inline-flex; flex-direction:column; gap:1px; }
+.ds-step__label { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:.6px; text-transform:uppercase; }
+.ds-step__cap { font-family:var(--font-body); font-size:var(--ds-fs-micro); letter-spacing:normal;
+  text-transform:none; color:var(--text-400); }
+.ds-steps__sep { flex:0 0 auto; width:24px; height:1px; background:var(--hairline); }
+.ds-steps--vertical { flex-direction:column; align-items:flex-start; }
+.ds-steps--vertical .ds-step { align-items:flex-start; }
+.ds-steps--vertical .ds-steps__sep { width:1px; height:14px; margin-left:9px; }
+
+/* ---- ds-dropzone (drop target — dashed like ds-empty; cyan on drag-over) ----------------------- */
+.ds-dropzone { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:28px 16px; border:1px dashed var(--hairline-soft); background:var(--stage-900);
+  text-align:center; cursor:pointer; }
+.ds-dropzone:hover { border-color:var(--text-300); }
+.ds-dropzone.ds-over { border-color:var(--vim-cyan); background:var(--vim-cyan-tint); }
+.ds-dropzone__title { font-size:var(--ds-fs-label); font-weight:600; color:var(--text-200); }
+.ds-dropzone__hint { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+
+/* ---- ds-toolbar (control row above a table/list: search · segmented · actions) ---------------- */
+.ds-toolbar { display:flex; align-items:center; gap:8px; }
+.ds-toolbar__spacer { flex:1 1 auto; }
+.ds-toolbar > .ds-search { width:220px; flex:0 1 auto; }
+
+/* ---- ds-empty (no rows / no selection — pair with ds-skeleton for loading) -------------------- */
+.ds-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:28px 16px; border:1px dashed var(--hairline); text-align:center; }
+.ds-empty__title { font-size:var(--ds-fs-label); font-weight:600; color:var(--text-300); }
+.ds-empty__hint { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+/* fill: the whole room of a region with nothing to show yet, the state centred in it on the panel
+   surface (a page over the 3D is transparent, so a region paints its own). */
+.ds-empty-fill { flex:1 1 auto; min-width:0; min-height:0; display:flex; align-items:center; justify-content:center;
+  background:var(--stage-900); }
+
+/* ---- ds-field (key/value row) ---------------------------------------------------------------- */
+.ds-field { display:flex; align-items:center; gap:12px; height:22px; }
+.ds-field__key { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  color:var(--text-300); font-size:var(--ds-fs-label); }
+.ds-field__val { flex:0 0 auto; font-family:var(--font-mono); font-size:var(--ds-fs-label);
+  font-variant-numeric:tabular-nums; color:var(--text-100); }
+.ds-field__val--gap { color:var(--text-400); }   /* an unpopulated value renders as a grey em-dash */
+
+/* ============================================================================================
+   ORGANISMS — composed blocks
+   ============================================================================================ */
+
+/* ---- ds-card (flat panel with an optional keyline header + body slot) ------------------------- */
+.ds-card { background:var(--stage-800); border:1px solid var(--hairline); border-radius:var(--ds-radius-card); box-shadow:none; }
+.ds-card__head { display:flex; align-items:center; gap:8px; padding:10px var(--ds-space-4);
+  border-bottom:1px solid var(--hairline); }
+.ds-card__head::before { content:""; align-self:stretch; width:2px; background:var(--vim-cyan); margin:2px 0; } /* 2px cyan keyline */
+.ds-card--no-keyline .ds-card__head::before { display:none; }
+.ds-card__titles { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.ds-card__sub { color:var(--text-400); font-size:var(--ds-fs-eyebrow); font-family:var(--font-mono); letter-spacing:.4px; }
+.ds-card__actions { margin-left:auto; display:flex; align-items:center; gap:6px; }
+.ds-card__body { padding:var(--ds-space-4); display:flex; flex-direction:column; gap:var(--ds-space-3); }
+
+/* A row of stats (KPI band) inside a card body. */
+.ds-stat-band { display:flex; gap:var(--ds-space-5); flex-wrap:wrap; }
+.ds-stat-band > .ds-stat { flex:1 1 auto; }
+
+/* ---- ds-formfield (label + control slot + help / error — the real unit of a form) ------------- */
+.ds-formfield { display:flex; flex-direction:column; gap:5px; }
+/* Stacked fields breathe: without this the next field's label sits flush against the previous
+   control (forms are the one place fields reliably stack). */
+.ds-formfield + .ds-formfield { margin-top:var(--ds-space-4); }
+.ds-formfield__label { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:.6px;
+  text-transform:uppercase; color:var(--text-300); }
+.ds-formfield__req { color:var(--bad); margin-left:3px; }
+.ds-formfield__help { font-size:var(--ds-fs-small); color:var(--text-400); }
+.ds-formfield__error { font-size:var(--ds-fs-small); color:var(--bad); display:none; }
+.ds-formfield.ds-invalid .ds-formfield__error { display:block; }
+.ds-formfield.ds-invalid .ds-input,
+.ds-formfield.ds-invalid .ds-textarea,
+.ds-formfield.ds-invalid .ds-select { border-color:var(--bad); }
+
+/* ---- ds-list (simple item list; optional single/multi selection) ------------------------------ */
+.ds-list { display:flex; flex-direction:column; border:1px solid var(--hairline); background:var(--stage-900); }
+.ds-list__item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-bottom:1px solid var(--hairline);
+  color:var(--text-200); font-size:var(--ds-fs-label); cursor:default; }
+.ds-list__item:last-child { border-bottom:0; }
+/* dim — present, clickable, but with nothing to offer (a choice that would change nothing) */
+.ds-list__item--dim, .ds-list__item--dim .ds-list__meta { color:var(--text-400); }
+.ds-list--selectable .ds-list__item { cursor:pointer; }
+.ds-list--selectable .ds-list__item:hover { background:var(--vim-cyan-tint); }
+.ds-list__item.ds-sel { background:var(--vim-cyan-tint); box-shadow:inset 2px 0 0 var(--vim-cyan); color:var(--text-100); }
+.ds-list__item:focus-visible { outline:1px solid var(--vim-cyan); outline-offset:-1px; }
+/* Virtual list — same windowing scaffold as the tree: JS sets spacer height + rows translateY. */
+.ds-list--virtual { position:relative; overflow-y:auto; }
+/* Height-capped (createList's maxHeight): the list scrolls inside its own bound instead of growing
+   with its items. min-height:0 so it can also be a flex child that shrinks. */
+.ds-list--scroll { overflow-y:auto; min-height:0; }
+.ds-list--virtual .ds-list__spacer { position:absolute; left:0; top:0; width:1px; }
+.ds-list--virtual .ds-list__rows { position:absolute; left:0; top:0; right:0; }
+.ds-list__item .ds-icon { color:var(--text-300); font-size:var(--ds-fs-body); }
+.ds-list__label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-list__meta { flex:0 0 auto; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+/* Trailing row actions: quiet until the row is hovered/selected, so a long list doesn't read as a
+   wall of buttons. Focus-visible keeps them reachable by keyboard even while "hidden". */
+.ds-list__actions { flex:0 0 auto; display:flex; align-items:center; gap:2px; margin-left:auto;
+  opacity:0; }
+.ds-list__item:hover .ds-list__actions, .ds-list__item.ds-sel .ds-list__actions,
+.ds-list__actions:focus-within { opacity:1; }
+.ds-list__actions .ds-iconbtn.ds-disabled { opacity:.4; pointer-events:auto; cursor:not-allowed; }
+
+/* ---- ds-tree (hierarchy list — model ▸ level ▸ element; the explorer's left-hand spine) --------
+   Indent = --depth custom property (set per item by JS); caret is a CSS triangle (no glyph, no
+   animation — rotate is a static state). Selection reuses the ds-sel contract from ds-list. */
+.ds-tree { display:flex; flex-direction:column; border:1px solid var(--hairline); background:var(--stage-900); }
+.ds-tree__item { display:flex; align-items:center; gap:var(--ds-tree-gap); border:0; background:transparent; text-align:left;
+  padding:4px var(--ds-col-pad); padding-left:calc(var(--ds-col-pad) + var(--depth,0) * 16px); cursor:pointer;
+  color:var(--text-200); font-family:var(--font-body); font-size:var(--ds-fs-label); border-radius:0; }
+/* Row tint (the shared .ds-rowtint--* vocabulary, defined with the table). It sits ABOVE hover and
+   selection in the file so those paint over it — same precedence the table gives them. */
+.ds-tree__item.ds-rowtint { background:color-mix(in srgb,var(--ds-rowtint) var(--ds-rowtint-a,12%),transparent); }
+.ds-tree__item:hover { background:var(--vim-cyan-tint); }
+.ds-tree__item.ds-sel { background:var(--vim-cyan-tint); box-shadow:inset 2px 0 0 var(--vim-cyan); color:var(--text-100); }
+/* Keyboard focus (the roving treeitem): the virtualized container holds real DOM focus; ds-kfocus
+   marks the active row — an outline, distinct from selection, composable with ds-sel. */
+.ds-tree__item.ds-kfocus { outline:1px solid var(--vim-cyan); outline-offset:-1px; }
+.ds-tree--virtual:focus { outline:none; }
+.ds-tree__caret { flex:0 0 auto; width:0; height:0; border-top:4px solid transparent;
+  border-bottom:4px solid transparent; border-left:5px solid var(--text-400); }
+.ds-tree__item.ds-open .ds-tree__caret { transform:rotate(90deg); border-left-color:var(--text-300); }
+.ds-tree__item.ds-leaf .ds-tree__caret { visibility:hidden; }
+.ds-tree__label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-tree__meta { flex:0 0 auto; font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+.ds-tree__tag { flex:0 0 auto; margin-left:6px; padding:0 4px; border:1px solid var(--hairline);
+  font-size:var(--ds-fs-micro); letter-spacing:.03em; text-transform:uppercase; color:var(--text-300); }
+.ds-tree__meta.ds-tree__meta--accent { color:var(--vim-cyan); } /* emphasized numeric meta (e.g. counts) */
+/* Two selection layers: the transient .ds-sel highlight (above) and a persistent .ds-locked ("solid"
+   checkbox lock); .ds-partial marks a collapsed ancestor of either (a faint bar). */
+.ds-tree__item.ds-partial { background:color-mix(in srgb, var(--vim-cyan) 8%, transparent);
+  box-shadow:inset 2px 0 0 color-mix(in srgb, var(--vim-cyan) 50%, transparent); }
+.ds-tree__item.ds-locked { box-shadow:inset 3px 0 0 var(--vim-cyan); }
+.ds-tree__item.ds-locked .ds-tree__label { color:var(--text-100); }
+/* Depth-tinted labels (level 0 strongest). The consumer sets .ds-depth-N (0..3) per row. */
+.ds-tree__item.ds-depth-0 .ds-tree__label { color:var(--text-100); font-weight:600; }
+.ds-tree__item.ds-depth-1 .ds-tree__label { color:var(--vim-cyan-300); }
+.ds-tree__item.ds-depth-2 .ds-tree__label { color:var(--text-200); }
+.ds-tree__item.ds-depth-3 .ds-tree__label { color:var(--text-400); }
+/* Muted rows dim their text too (the table's rule, in the tree's vocabulary) — after the depth
+   tints, so a done row recedes whatever level it sits at. */
+.ds-tree__item.ds-rowtint--muted .ds-tree__label,
+.ds-tree__item.ds-rowtint--muted .ds-tree__meta { color:var(--text-400); }
+/* Full-height expand/collapse hit-zone (a bigger target than the caret): reaches the row's left edge
+   and carries the --depth indent. Interactive trees wrap the caret in this instead of indenting the row. */
+.ds-tree__toggle { display:inline-flex; align-items:center; align-self:stretch; flex:0 0 auto; cursor:pointer;
+  padding-left:calc(14px + var(--depth,0) * 14px); }
+.ds-tree__toggle .ds-tree__caret { margin:0 7px 0 0; }
+/* Checkbox column (the "solid"/checkable tree — the squares): fixed at the row's left edge, does NOT
+   indent with depth; holds a .ds-check. */
+.ds-tree__check { flex:0 0 auto; display:flex; align-items:center; justify-content:center; width:22px; align-self:stretch; }
+/* The whole check cell is the hit zone the tree's click handler uses, so the hover ring follows the cell. */
+.ds-tree__check:hover .ds-check__box { border-color:var(--vim-cyan); }
+/* Right-aligned numeric value cell (column widths set by the consumer). The row's flex gap already
+   sits before every cell, so the margin adds only the remainder of the column gutter — that way the
+   gutter here and in the .ds-cols header above measure the same. The padding is the shared text
+   inset: border-box keeps the column's width, so only the digits move, onto the same stop a heat
+   pill's digits and the header's label use. */
+.ds-tree__cell { flex:0 0 auto; margin-left:calc(var(--ds-col-gutter) - var(--ds-tree-gap)); padding-right:var(--ds-col-inset);
+  text-align:right; box-sizing:border-box;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; align-self:center; font-variant-numeric:tabular-nums; }
+.ds-tree__cell.ds-heat { min-width:0; }  /* the heat pill sizes to the column, not ds-heat's default min-width */
+
+/* ---- ds-tree--virtual (a windowed ds-tree: the SAME chrome as .ds-tree, but the rows live in an
+   absolutely-positioned window inside a scroll box. The consumer's JS owns the windowing and sets the
+   dynamic sizes — spacer height + rows translateY. Use together: class="ds-tree ds-tree--virtual". -- */
+/* scrollbar-gutter:stable — the strip is reserved whether or not the rows currently overflow, so the
+   header above (which pads by --ds-scrollbar-w) stays over its cells either way. */
+.ds-tree--virtual { display:block; position:relative; overflow-y:auto; overflow-x:hidden; border-radius:0;
+  scrollbar-gutter:stable; }
+.ds-tree__spacer { position:absolute; left:0; top:0; width:1px; }   /* JS sets height = total rows * row-h */
+.ds-tree__rows   { position:absolute; left:0; top:0; right:0; }     /* JS sets transform:translateY(window) */
+.ds-tree--virtual .ds-tree__item { height:24px; padding:0 var(--ds-col-pad) 0 0;
+  border-bottom:1px solid color-mix(in srgb, var(--text-100) 3%, transparent); }
+/* Sticky ancestor trail: the open-group chain of the first visible row, pinned to the top of the
+   scroll box so context survives mid-scroll (JS fills it from the flat data). Opaque (OSR: it
+   overlays scrolling rows) with a firmer under-hairline; each pinned row stays a ds-tree__item. */
+.ds-tree__trail { position:sticky; top:0; left:0; right:0; z-index:2; display:flex; flex-direction:column;
+  background:var(--stage-800); border-bottom:1px solid var(--hairline-soft); }
+.ds-tree__trail:empty { display:none; }
+.ds-tree__trail .ds-tree__item { background:var(--stage-800); }
+.ds-tree__trail .ds-tree__item:hover { background:var(--vim-cyan-tint); }
+
+/* ---- ds-cols (sortable column-header strip for non-table grids: a flex row of column buttons with
+   sort indicators, sitting above a .ds-tree / virtualized list. Real tables use th.ds-sortable). ---- */
+.ds-cols { display:flex; align-items:center; padding:0 var(--ds-col-pad); background:var(--stage-900);
+  border:1px solid var(--hairline); }
+/* position:relative on every column, not just --num: a column-resize grip is absolutely positioned
+   inside the cell it sizes, so any cell may host one. */
+.ds-cols__col { position:relative; display:inline-flex; align-items:center; gap:4px; padding:6px 0; background:none; border:0;
+  font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:.6px; text-transform:uppercase;
+  color:var(--text-300); cursor:pointer; }
+.ds-cols__col:hover { color:var(--text-100); }
+.ds-cols__col.ds-sorted { color:var(--text-100); }
+.ds-cols__col.ds-cols__col--static { cursor:default; }
+.ds-cols__col.ds-cols__col--static:hover { color:var(--text-300); }
+.ds-cols__col--grow { flex:1 1 auto; justify-content:flex-start; }
+/* The numeric column reserves the shared text inset and hangs its sort arrow inside it, out of flow —
+   in flow the arrow (plus the gap) would push the label off the stop its cells' digits stand on. */
+.ds-cols__col--num  { flex:0 0 auto; justify-content:flex-end; margin-left:var(--ds-col-gutter); box-sizing:border-box;
+  position:relative; padding-right:var(--ds-col-inset); }
+.ds-cols__arrow { font-size:8px; line-height:1; min-width:8px; }
+.ds-cols__col--num .ds-cols__arrow { position:absolute; right:0; top:50%; transform:translateY(-50%); }
+.ds-cols__col.ds-sorted .ds-cols__arrow { color:var(--vim-cyan); }
+/* Fuse an attached header into the scroll box directly below it (no doubled border), and pad the
+   strip by the scrollbar the rows below reserve — the header is outside the scroll box, so without
+   this its columns sit a scrollbar's width right of their cells. */
+.ds-cols--attached { border-bottom:0; }
+.ds-cols--attached + .ds-tree--virtual { border-top:0; }
+.ds-cols--attached:has(+ .ds-tree--virtual) { padding-right:calc(var(--ds-col-pad) + var(--ds-scrollbar-w)); }
+
+/* ---- ds-menu extras (action/dropdown menu — reuses .ds-menu / .ds-menu-backdrop from select) --- */
+.ds-menu__item .ds-icon { font-size:var(--ds-fs-body); color:var(--text-300); margin-right:2px; }
+.ds-menu__item.ds-disabled { color:var(--text-500); pointer-events:none; }
+.ds-menu__sep { height:1px; background:var(--hairline); margin:4px 6px; }
+.ds-menu__hint { margin-left:auto; padding-left:12px; flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; color:var(--text-400); font-size:var(--ds-fs-eyebrow); }
+
+/* ---- ds-panel (side panel / drawer — the inspector docked beside the 3D viewport) --------------
+   In-flow flex child (not overlay): the viewport keeps compositing beside it. Right-docked by
+   default; --left flips the hairline. Head is plain (no keyline — that is the card's mark);
+   body scrolls; foot is the action row. */
+.ds-panel { display:flex; flex-direction:column; width:300px; min-width:240px; max-width:420px;
+  background:var(--stage-900); border-left:1px solid var(--hairline); }
+.ds-panel--left { border-left:0; border-right:1px solid var(--hairline); }
+/* --fill: the panel IS a layout cell (e.g. a resizable pane) — the CONTAINER owns the width, so the
+   dock clamps come off and the panel fills it. */
+.ds-panel--fill { width:100%; height:100%; min-width:0; max-width:none; }
+.ds-panel__head { display:flex; align-items:center; gap:8px; padding:9px 12px; flex:0 0 auto;
+  border-bottom:1px solid var(--hairline); }
+.ds-panel__title { font-family:var(--font-display); font-weight:700; font-size:var(--ds-fs-title); color:var(--text-100);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-panel__subtitle { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+/* The head's crumb slot: "Title › subject". When the head is short the title stays whole and the
+   subject shares the shrink with the actions (each in proportion to its width). The title, the "›"
+   and the subject share one text baseline: their fonts differ in size, so centring their boxes would
+   set the smaller text off the title's line. */
+.ds-panel__crumb { display:flex; align-items:baseline; gap:8px; flex:0 1 auto; min-width:0; align-self:baseline; }
+.ds-panel__head--crumb > .ds-panel__title { flex-shrink:0; align-self:baseline; }
+.ds-panel__crumb::before { content:"\203A"; flex:0 0 auto; font-family:var(--font-display); font-size:var(--ds-fs-title);
+  line-height:1; color:var(--text-400); }
+/* The head's actions slot: right-aligned, the panel-level controls; the close (if any) sits after it. */
+.ds-panel__actions { margin-left:auto; display:flex; align-items:center; gap:6px; flex:0 1 auto; min-width:0; } /* shrinks with the head, so a control that ellipsizes (a preset name) can */
+.ds-panel__actions + .ds-panel__close { margin-left:0; }
+.ds-panel__close { margin-left:auto; width:20px; height:20px; padding:0; border:0; background:transparent;
+  color:var(--text-400); cursor:pointer; font-size:var(--ds-fs-body); line-height:1; border-radius:0; }
+.ds-panel__close:hover { color:var(--text-100); }
+.ds-panel__body { flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px;
+  display:flex; flex-direction:column; gap:10px; }
+.ds-panel__foot { display:flex; justify-content:flex-end; gap:8px; padding:10px 12px; flex:0 0 auto;
+  border-top:1px solid var(--hairline); }
+
+/* ---- ds-pathchip (file-system path — CSS folder glyph + LEFT-truncated mono path) --------------
+   Truncation contract: the END of the path stays visible (that's the part users recognise);
+   ellipsis eats the left. Full path goes in a ds-tip on hover. */
+.ds-pathchip { display:flex; align-items:center; gap:7px; min-width:0; padding:3px 8px;
+  border:1px solid var(--hairline); background:var(--stage-900); color:var(--text-400);
+  font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); letter-spacing:.2px; cursor:default; }
+.ds-pathchip:hover { color:var(--text-200); border-color:var(--hairline-soft); }
+.ds-pathchip__icon { flex:0 0 auto; position:relative; width:11px; height:8px; border:1px solid currentColor; }
+.ds-pathchip__icon::before { content:""; position:absolute; top:-3px; left:-1px; width:4px; height:2px;
+  border:1px solid currentColor; border-bottom:0; }                       /* folder tab */
+.ds-pathchip__path { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  direction:rtl; text-align:left; }                                       /* left-side ellipsis */
+
+/* ---- ds-thumbcard (project / model card: preview slot + identity + meta + path) ----------------
+   Preview sits on the darkest stage fill so 3D renders read as "the viewport". Status chips:
+   Linked = default ds-chip · Packaged = ds-chip--cyan. The … actions button shows on hover and
+   opens a ds-menu. Whole card is the click target (open). */
+.ds-thumbcard { position:relative; display:flex; flex-direction:column; gap:6px; padding:10px;
+  border:1px solid var(--hairline); background:var(--stage-800); cursor:pointer; border-radius:var(--ds-radius-card); }
+.ds-thumbcard:hover { border-color:var(--vim-cyan); }
+.ds-thumbcard__preview { aspect-ratio:16/10; border:1px solid var(--hairline); background:var(--stage-950);
+  display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.ds-thumbcard__preview img { width:100%; height:100%; object-fit:cover; display:block; }
+.ds-thumbcard__titlerow { display:flex; align-items:center; gap:8px; min-width:0; }
+.ds-thumbcard__name { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-weight:700; font-size:var(--ds-fs-label); color:var(--text-100); }
+.ds-thumbcard__meta { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-300);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-thumbcard__time { font-family:var(--font-mono); font-size:var(--ds-fs-eyebrow); color:var(--text-400); }
+.ds-thumbcard__menu { position:absolute; top:16px; right:16px; display:none; align-items:center; justify-content:center;
+  width:22px; height:22px; padding:0; border:1px solid var(--hairline); background:var(--stage-800);
+  color:var(--text-300); cursor:pointer; font-size:var(--ds-fs-body); line-height:1; border-radius:0; }
+.ds-thumbcard:hover .ds-thumbcard__menu { display:flex; }
+.ds-thumbcard__menu:hover { color:var(--text-100); border-color:var(--vim-cyan); }
+
+/* ---- ds-modal (dim backdrop + centered flat panel + header/body/footer) ------------------------
+   The foot is right-aligned; the primary action is its LAST button (bottom-right), Cancel to its left. */
+.ds-modal-backdrop { position:fixed; inset:0; z-index:var(--z-modal); display:none; align-items:center; justify-content:center;
+  background:var(--scrim-heavy); }
+.ds-modal-backdrop.ds-open { display:flex; }
+.ds-modal { display:flex; flex-direction:column; min-width:320px; max-width:90vw; max-height:86vh;
+  background:var(--stage-800); border:1px solid var(--hairline-soft); border-radius:var(--ds-radius-modal); box-shadow:none; }
+.ds-modal__head { display:flex; align-items:center; padding:12px 16px; border-bottom:1px solid var(--hairline); }
+.ds-modal__title { font-family:var(--font-display); font-weight:700; font-size:var(--ds-fs-title); color:var(--text-100); }
+/* A 28px target around a 14px icon-font glyph (7px of air a side); the negative margins keep the
+   head's height and pull the glyph's right edge in line with the body's content edge. */
+.ds-modal__close { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  width:28px; height:28px; margin:-5px -6px -5px auto; padding:0; border:0; background:transparent;
+  color:var(--text-300); cursor:pointer; font-family:var(--font-icon); font-size:14px; line-height:1;
+  border-radius:var(--ds-radius-btn); }
+.ds-modal__close:hover { color:var(--text-100); background:var(--stage-600); }
+.ds-modal__close:focus:not(:focus-visible) { outline:none; }
+.ds-modal__body { padding:16px; overflow:auto; color:var(--text-200); font-size:var(--ds-fs-body); line-height:1.45; }
+.ds-modal__foot { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid var(--hairline); }
+/* Confirm variant — same organism, narrower, message-only body; destructive action = ds-btn--danger. */
+.ds-modal--confirm { min-width:0; width:360px; }
+/* The width scale: a dialog of a given size is that wide, whatever its content, so its body content
+   fills it rather than being sized by hand. */
+.ds-modal--sm { min-width:0; width:360px; }
+.ds-modal--md { min-width:0; width:480px; }
+.ds-modal--lg { min-width:0; width:640px; }
+.ds-modal--confirm .ds-modal__body { color:var(--text-200); }
+/* ---- ds-confirm (typed-word gate + per-item outcome report) ---------------------------------- */
+.ds-confirm__gate { margin-top:12px; }
+.ds-confirm__gate .ds-input { width:100%; }
+.ds-confirm__outcomes { display:flex; flex-direction:column; gap:6px; }
+.ds-confirm__outcome { display:flex; align-items:center; gap:8px; }
+.ds-confirm__outcome-label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ds-confirm__outcome-note { margin-left:auto; color:var(--text-400); font-size:var(--ds-fs-eyebrow); }
+
+/* ---- ds-toast (transient feedback; stacks top-right, below the host app's title bar) ------------
+   --vf-titlebar-h is published into every VIM Flex document; the fallback covers the gallery. */
+.ds-toaster { position:fixed; top:calc(var(--vf-titlebar-h, 34px) + 8px); right:16px;
+  z-index:var(--z-toast); display:flex; flex-direction:column; gap:8px;
+  align-items:flex-end; pointer-events:none; }
+.ds-toast { pointer-events:auto; display:flex; align-items:center; gap:10px; min-width:200px; max-width:360px;
+  padding:9px 12px; background:var(--stage-700); border:1px solid var(--hairline-soft);
+  border-left:2px solid var(--vim-cyan); color:var(--text-100); font-size:var(--ds-fs-label); }
+.ds-toast--good { border-left-color:var(--good); }
+.ds-toast--warn { border-left-color:var(--warn); }
+.ds-toast--bad  { border-left-color:var(--bad); }
+.ds-toast__msg { flex:1 1 auto; }
+.ds-toast__close { flex:0 0 auto; width:var(--ds-control-h-sm); height:var(--ds-control-h-sm); padding:0; border:0;
+  background:transparent; color:var(--text-400); cursor:pointer; font-size:18px; line-height:1; border-radius:0; }
+.ds-toast__close:hover { color:var(--text-100); }

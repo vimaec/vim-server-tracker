@@ -1,0 +1,11 @@
+{
+  "name": "VIM Site Explorer",
+  "short_name": "VIM Site",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B121C",
+  "theme_color": "#0B121C",
+  "icons": [{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}

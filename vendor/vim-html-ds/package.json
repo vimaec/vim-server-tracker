@@ -1,0 +1,10 @@
+{
+  "name": "vim-html-ds",
+  "version": "1.0.0+a90145c",
+  "private": true,
+  "type": "module",
+  "main": "./dist/ds.js",
+  "module": "./dist/ds.js",
+  "types": "./dist/ds.d.ts",
+  "exports": { ".": { "types": "./dist/ds.d.ts", "import": "./dist/ds.js" }, "./ds.css": "./styles/ds.css" }
+}

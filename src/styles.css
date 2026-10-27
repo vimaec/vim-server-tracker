@@ -1,0 +1,73 @@
+/* VIM Site Explorer - layout only. Every colour, font, size and corner comes from the design system's
+   tokens (vim-html-ds ds.css): no hex, no literal radius, no shadow, no animation. */
+
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--stage-950); color: var(--text-100);
+  font-family: var(--font-body); font-size: var(--ds-fs-body, 13px);
+  overflow: hidden; -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#app { height: 100%; display: flex; flex-direction: column; }
+
+/* top bar */
+.se-bar {
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--ds-space-3);
+  padding: calc(var(--ds-space-2) + env(safe-area-inset-top, 0px)) calc(var(--ds-space-3) + env(safe-area-inset-right, 0px)) var(--ds-space-2) calc(var(--ds-space-3) + env(safe-area-inset-left, 0px));
+  background: var(--stage-900); border-bottom: 1px solid var(--hairline); flex-wrap: wrap;
+}
+.se-brand { display: flex; align-items: baseline; gap: var(--ds-space-2); }
+.se-brand b { font-family: var(--font-display); font-weight: 700; font-size: var(--ds-fs-title); letter-spacing: 1px; color: var(--vim-cyan); }
+.se-brand span { font-family: var(--font-display); font-size: var(--ds-fs-title); color: var(--text-100); }
+.se-project { font-family: var(--font-display); color: var(--text-200); font-size: var(--ds-fs-title); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.se-sp { flex: 1 1 auto; }
+.se-status { display: flex; gap: var(--ds-space-2); align-items: center; }
+.se-muted { color: var(--text-400); font-size: var(--ds-fs-label); }
+
+/* three columns */
+.se-main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 250px minmax(0, 1fr) 330px; }
+.se-left, .se-right { min-height: 0; overflow-y: auto; background: var(--stage-900); }
+.se-left { border-right: 1px solid var(--hairline); padding-left: env(safe-area-inset-left, 0px); }
+.se-right { border-left: 1px solid var(--hairline); padding-right: env(safe-area-inset-right, 0px); }
+.se-section { padding: var(--ds-space-2) var(--ds-space-3); border-bottom: 1px solid var(--hairline); display: grid; gap: var(--ds-space-2); }
+.se-eyebrow { font-family: var(--font-mono); font-size: var(--ds-fs-eyebrow); letter-spacing: .6px; text-transform: uppercase; color: var(--text-400); display: flex; align-items: center; gap: var(--ds-space-2); }
+.se-eyebrow .se-sp { flex: 1; }
+.se-center { position: relative; min-width: 0; min-height: 0; background: var(--stage-950); overflow: hidden; contain: layout paint; }
+/* vim-web sizes its canvas to the window; held to the middle column here so it never covers the panels. */
+.se-canvas { position: absolute; inset: 0; overflow: hidden; }
+.se-canvas canvas { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+.se-overlay-top { position: absolute; left: var(--ds-space-3); top: var(--ds-space-3); display: flex; gap: var(--ds-space-2); align-items: center; background: var(--stage-900); border: 1px solid var(--hairline); padding: var(--ds-space-1) var(--ds-space-2); z-index: 20; }
+.se-overlay-legend { position: absolute; left: var(--ds-space-3); bottom: calc(var(--ds-space-3) + env(safe-area-inset-bottom, 0px)); background: var(--stage-900); border: 1px solid var(--hairline); padding: var(--ds-space-2); min-width: 190px; z-index: 20; }
+.se-overlay-note { position: absolute; right: var(--ds-space-3); top: var(--ds-space-3); max-width: 45%; color: var(--text-400); font-size: var(--ds-fs-label); background: var(--stage-900); border: 1px solid var(--hairline); padding: var(--ds-space-1) var(--ds-space-2); z-index: 20; }
+
+/* properties (the layout of VIM Flex's vf-parameters panel, same tokens) */
+.se-props-head { padding: var(--ds-space-2) var(--ds-space-3); border-bottom: 1px solid var(--hairline); }
+.se-props-title { font-family: var(--font-display); font-size: var(--ds-fs-title); font-weight: 700; color: var(--text-100); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.se-props-body { padding: var(--ds-space-2) var(--ds-space-3); display: grid; gap: var(--ds-space-2); }
+.se-kv { display: grid; grid-template-columns: minmax(90px, 40%) minmax(0, 1fr); gap: 3px var(--ds-space-3); align-items: center; }
+.se-k { font-family: var(--font-mono); font-size: var(--ds-fs-eyebrow); letter-spacing: .6px; text-transform: uppercase; color: var(--text-400); }
+.se-v { font-size: var(--ds-fs-label); color: var(--text-100); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; -webkit-user-select: text; user-select: text; }
+.se-pname { font-size: var(--ds-fs-label); color: var(--text-300); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* custom fields: the editable block on top */
+.se-field { display: grid; gap: 3px; padding: var(--ds-space-1) 0; border-bottom: 1px solid var(--hairline); }
+.se-field:last-child { border-bottom: 0; }
+.se-field-label { display: flex; align-items: center; gap: var(--ds-space-2); font-size: var(--ds-fs-label); color: var(--text-200); font-weight: 500; }
+.se-field-log { font-size: var(--ds-fs-micro, 10px); color: var(--text-400); }
+.se-pending { color: var(--warn); }
+
+/* sign-in and project list */
+.se-page { flex: 1 1 auto; overflow-y: auto; display: flex; justify-content: center; padding: var(--ds-space-4) max(16px, env(safe-area-inset-left, 0px)); }
+.se-card { width: min(560px, 100%); display: grid; gap: var(--ds-space-3); align-content: start; }
+.se-card h1 { font-family: var(--font-display); font-size: 20px; margin: 0; font-weight: 700; }
+.se-row { display: flex; gap: var(--ds-space-2); align-items: center; flex-wrap: wrap; }
+.se-progress { height: 4px; background: var(--stage-700); }
+.se-progress > div { height: 100%; background: var(--vim-cyan); width: 0; }
+
+@media (max-width: 900px) {
+  .se-main { grid-template-columns: 200px minmax(0, 1fr) 280px; }
+}
+@media (max-width: 700px) {
+  .se-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: 45% minmax(0, 1fr); }
+  .se-left { display: none; }
+}

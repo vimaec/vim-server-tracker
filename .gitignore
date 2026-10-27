@@ -1,0 +1,4 @@
+node_modules
+/dist
+_proof/*.png
+_proof/readback.json
