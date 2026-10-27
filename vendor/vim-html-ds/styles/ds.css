@@ -22,13 +22,8 @@
    ============================================================================================ */
 
 /* ---- Fonts (served from vimflex://shell/fonts/) ------------------------------------------------ */
-/* Retina — titles + headings (--font-display); the three shipped weights (Book 400 / Medium 500 / Bold 700). */
-@font-face { font-family:'Retina'; font-style:normal; font-weight:400; font-display:swap;
-  src:url(fonts/Retina-Book.woff2) format('woff2'), url(fonts/Retina-Book.woff) format('woff'); }
-@font-face { font-family:'Retina'; font-style:normal; font-weight:500; font-display:swap;
-  src:url(fonts/Retina-Medium.woff2) format('woff2'), url(fonts/Retina-Medium.woff) format('woff'); }
-@font-face { font-family:'Retina'; font-style:normal; font-weight:700; font-display:swap;
-  src:url(fonts/Retina-Bold.woff2) format('woff2'), url(fonts/Retina-Bold.woff) format('woff'); }
+/* LOCAL CHANGE (vim-site-explorer, Sam 2026-10-27): Retina is a paid font and this repo is public, so its
+   files and @font-face rules are left out; titles use Roboto (--font-display below). */
 /* Roboto — general body + button text (--font-body) and data/values (--font-mono, with tabular-nums). */
 @font-face { font-family:'Roboto'; font-style:normal; font-weight:100 900; font-display:swap;
   src:url(fonts/Roboto-VariableFont_wdth_wght.ttf) format('truetype'); }
@@ -73,7 +68,7 @@
 
   /* Type — Retina (titles/headings only) + Roboto (all general body, button text, numbers/codes/
      table cells/eyebrows). --font-mono keeps its name and tabular-nums role but is Roboto now. */
-  --font-display:'Retina',system-ui,-apple-system,sans-serif;
+  --font-display:'Roboto',system-ui,-apple-system,sans-serif;
   --font-body:'Roboto',system-ui,-apple-system,sans-serif;
   --font-mono:'Roboto',Consolas,ui-monospace,monospace;
   --font-icon:'FluentSystemIcons-Regular','Roboto',system-ui,sans-serif;
